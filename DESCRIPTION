@@ -1,0 +1,24 @@
+Package: rcaiman.registry
+Title: Instrument Registry for CAnopy IMage ANalysis
+Version: 0.0.2.9000
+Authors@R: 
+    person("Gastón Mauro", "Díaz", , "gastonmaurodiaz@gmail.com",
+           role = c("aut", "cre"), comment = c(ORCID = "0000-0002-0362-8616"))
+Description: Provides a structured registry of instrument specifications and 
+  calibration metadata for canopy image analysis within the rcaiman ecosystem.
+License: MIT + file LICENSE
+BugReports: https://github.com/GastonMauroDiaz/rcaiman.registry/issues
+Suggests: 
+    rcaiman.projects,
+    testthat
+Config/testthat/edition: 3
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Depends: 
+    R (>= 3.5),
+    rcaiman
+Imports:
+    Rdpack
+LazyData: true
+RdMacros: Rdpack
