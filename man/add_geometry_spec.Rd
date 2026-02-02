@@ -7,7 +7,7 @@
 add_geometry_spec(
   registry,
   id,
-  date,
+  date = NULL,
   lens_coef,
   zenith_colrow,
   horizon_radius,
@@ -21,9 +21,11 @@ add_geometry_spec(
 \item{registry}{\code{hemispherical_camera_registry} object created with
 \code{\link[=new_registry]{new_registry()}}.}
 
-\item{id}{character vector of length one. Identifier of the geometry spec.}
+\item{id}{character vector of length one. Identifier of the geometry spec.
+Must use snake_case (lowercase letters, numbers, and underscores only)}
 
-\item{date}{a \code{\link{Date}} object indicating when the calibration was performed.}
+\item{date}{optional \code{\link{Date}} object. Date when the specification was added
+to the registry. If \code{NULL}, the current system date is used automatically.}
 
 \item{lens_coef}{numeric vector. Lens projection coefficients describing the
 relationship between image radius and zenith angle. These coefficients
@@ -49,17 +51,17 @@ angle (deg) that the system is capable of observing.}
 pixels of the raster from which \code{zenith_colrow} was derived.}
 
 \item{notes}{optional character vector of length one. Free-form notes
-describing the calibration procedure, assumptions, or references (e.g.
-publications).}
+providing context, scope, assumptions, or references relevant to this
+specification (e.g. publications).}
 
 \item{contact_information}{optional character vector of length one. Contact
-details of the author of the calibration.}
+information for the specification maintainer or responsible person.}
 }
 \value{
 A \code{hemispherical_camera_registry} object with the geometry specification
 appended.
 }
 \description{
-Add a geometric calibration specification to an existing hemispherical
+Add a geometry specification to an existing hemispherical
 camera registry.
 }

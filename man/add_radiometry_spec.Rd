@@ -2,17 +2,17 @@
 % Please edit documentation in R/add_radiometry_spec.R
 \name{add_radiometry_spec}
 \alias{add_radiometry_spec}
-\title{Add a calibration spec to an existing geometry spec}
+\title{Add a radiometry spec to an existing geometry spec}
 \usage{
 add_radiometry_spec(
   registry,
   geometry_id,
   id,
   type = "vignetting",
-  method,
-  model,
+  scheme,
+  model_type,
   parameters,
-  date,
+  date = NULL,
   notes = NULL,
   contact_information = NULL
 )
@@ -25,36 +25,54 @@ add_radiometry_spec(
 \item{geometry_id}{character vector of length one. Identifier of the geometry
 specification to which the radiometry spec will be attached.}
 
-\item{id}{character vector of length one. Identifier of the radiometry spec.}
+\item{id}{character vector of length one. Identifier of the radiometry spec.
+Must use snake_case (lowercase letters, numbers, and underscores only)}
 
 \item{type}{character vector of length one. Type of radiometric correction.
-Only "vignetting" is currently supported.}
+#'   Only "vignetting" is currently supported.}
 
-\item{method}{character vector of length one. Method used to acquire the
-primary data needed for radiometric calibration. Supported methods are
-"simple" and "photometric_sphere".}
+\item{scheme}{character vector of length one. Calibration scheme defining
+the modeling assumptions used by the core for radiometric correction.
+The selected scheme determines the effective form of the model and the
+constraints (if any) applied to its parameters. Recognized schemes
+currently implemented in \code{rcaiman}: \code{"simple"} and \code{"free_form"}.}
 
-\item{model}{character vector of length one. Model used to develop a
-radiometric correction. Only "polynomial" is currently supported via
-\link[rcaiman:correct_vignetting]{rcaiman::correct_vignetting}.}
+\item{model_type}{character vector of length one. Model type used to develop a
+radiometric correction. Only \code{"polynomial"} is currently implemented in
+\code{rcaiman}.}
 
-\item{parameters}{numeric vector. Model parameters defining the radiometric
-correction, following the conventions of the selected \code{model}.}
+\item{parameters}{A named list of model parameters. Model parameters defining
+the radiometric correction, following the conventions of the selected
+\code{model_type}. List names must be coercible to numeric values representing
+f-numbers.}
 
-\item{date}{a \code{\link{Date}} object indicating when the calibration was performed.}
+\item{date}{optional \code{\link{Date}} object. Date when the specification was added
+to the registry. If \code{NULL}, the current system date is used automatically.}
 
 \item{notes}{optional character vector of length one. Free-form notes
-describing the calibration procedure, assumptions, or references (e.g.
-publications).}
+providing context, scope, assumptions, or references relevant to this
+specification (e.g. publications).}
 
 \item{contact_information}{optional character vector of length one. Contact
-details of the author of the calibration.}
+information for the specification maintainer or responsible person.}
 }
 \value{
 A \code{hemispherical_camera_registry} object with the radiometry specification
 appended to the selected geometry specification.
 }
 \description{
-Add a radiometric calibration specification to an existing geometry
+Add a radiometry specification to an existing geometry
 specification in a hemispherical camera registry.
+}
+\details{
+Radiometry specifications intentionally separate \emph{parameter values} from
+\emph{model shape}. The \code{scheme} and \code{model_type} arguments provide the semantic
+context required by \code{rcaiman} to interpret those parameters and apply the
+corresponding correction.
+
+This design is deliberate. The effective mathematical model applied to images
+is defined by the functions that consume the registry (e.g.
+\code{\link[rcaiman:correct_vignetting]{rcaiman::correct_vignetting()}}), not by the registry itself. The registry
+stores parameter values together with the minimal semantic information
+required for their correct interpretation.
 }

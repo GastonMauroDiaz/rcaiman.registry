@@ -1,12 +1,14 @@
 #' Add a geometry spec to an existing registry
 #'
-#' Add a geometric calibration specification to an existing hemispherical
+#' Add a geometry specification to an existing hemispherical
 #' camera registry.
 #'
 #' @param registry `hemispherical_camera_registry` object created with
 #'   [new_registry()].
 #' @param id character vector of length one. Identifier of the geometry spec.
-#' @param date a [`Date`] object indicating when the calibration was performed.
+#'   Must use snake_case (lowercase letters, numbers, and underscores only)
+#' @param date optional [`Date`] object. Date when the specification was added
+#'   to the registry. If `NULL`, the current system date is used automatically.
 #' @param lens_coef numeric vector. Lens projection coefficients describing the
 #'   relationship between image radius and zenith angle. These coefficients
 #'   typically originate from [rcaiman::calibrate_lens()] or compatible
@@ -26,10 +28,10 @@
 #' @param dim integer-like numeric vector of length two. Width and height in
 #'   pixels of the raster from which `zenith_colrow` was derived.
 #' @param notes optional character vector of length one. Free-form notes
-#'   describing the calibration procedure, assumptions, or references (e.g.
-#'   publications).
+#'   providing context, scope, assumptions, or references relevant to this
+#'   specification (e.g. publications).
 #' @param contact_information optional character vector of length one. Contact
-#'   details of the author of the calibration.
+#'   information for the specification maintainer or responsible person.
 #'
 #' @return
 #' A `hemispherical_camera_registry` object with the geometry specification
@@ -40,7 +42,7 @@
 add_geometry_spec <- function(
     registry,
     id,
-    date,
+    date = NULL,
     lens_coef,
     zenith_colrow,
     horizon_radius,
@@ -49,6 +51,10 @@ add_geometry_spec <- function(
     notes = NULL,
     contact_information = NULL
 ) {
+
+  if (is.null(date)) {
+    date <- Sys.Date()
+  }
 
   if (!inherits(registry, "hemispherical_camera_registry")) {
     stop(
@@ -65,6 +71,7 @@ add_geometry_spec <- function(
   }
 
   .check_vector(id, "character", 1)
+  .assert_id(id)
   .check_vector(date, "date", 1)
   .check_vector(lens_coef, "numeric")
   .check_vector(zenith_colrow, "numeric", length = 2)

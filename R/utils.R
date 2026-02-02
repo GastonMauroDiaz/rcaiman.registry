@@ -150,3 +150,11 @@
 
   invisible(TRUE)
 }
+
+.assert_id <- function(id) {
+  if (!grepl("^[a-z0-9_]+$", id)) {
+    stop(
+      "`id` must use snake_case and contain only lowercase letters, numbers, and underscores."
+    )
+  }
+}

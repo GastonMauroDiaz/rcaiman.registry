@@ -11,6 +11,7 @@ Provides a structured registry of instrument specifications and calibration meta
 \seealso{
 Useful links:
 \itemize{
+  \item \url{https://github.com/GastonMauroDiaz/rcaiman.registry}
   \item Report bugs at \url{https://github.com/GastonMauroDiaz/rcaiman.registry/issues}
 }
 

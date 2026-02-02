@@ -1,8 +1,20 @@
-#' Add a calibration spec to an existing geometry spec
+#' Add a radiometry spec to an existing geometry spec
 #'
 #' @description
-#' Add a radiometric calibration specification to an existing geometry
+#' Add a radiometry specification to an existing geometry
 #' specification in a hemispherical camera registry.
+#'
+#' @details
+#' Radiometry specifications intentionally separate *parameter values* from
+#' *model shape*. The `scheme` and `model_type` arguments provide the semantic
+#' context required by `rcaiman` to interpret those parameters and apply the
+#' corresponding correction.
+#'
+#' This design is deliberate. The effective mathematical model applied to images
+#' is defined by the functions that consume the registry (e.g.
+#' [rcaiman::correct_vignetting()]), not by the registry itself. The registry
+#' stores parameter values together with the minimal semantic information
+#' required for their correct interpretation.
 #'
 #' @param registry `hemispherical_camera_registry` object created with
 #'   [new_registry()] and containing the geometry specification identified by
@@ -10,16 +22,21 @@
 #' @param geometry_id character vector of length one. Identifier of the geometry
 #'   specification to which the radiometry spec will be attached.
 #' @param id character vector of length one. Identifier of the radiometry spec.
+#'   Must use snake_case (lowercase letters, numbers, and underscores only)
 #' @param type character vector of length one. Type of radiometric correction.
-#'   Only "vignetting" is currently supported.
-#' @param method character vector of length one. Method used to acquire the
-#'   primary data needed for radiometric calibration. Supported methods are
-#'   "simple" and "photometric_sphere".
-#' @param model character vector of length one. Model used to develop a
-#'   radiometric correction. Only "polynomial" is currently supported via
-#'   [rcaiman::correct_vignetting].
-#' @param parameters numeric vector. Model parameters defining the radiometric
-#'   correction, following the conventions of the selected `model`.
+#' #'   Only "vignetting" is currently supported.
+#' @param scheme character vector of length one. Calibration scheme defining
+#'   the modeling assumptions used by the core for radiometric correction.
+#'   The selected scheme determines the effective form of the model and the
+#'   constraints (if any) applied to its parameters. Recognized schemes
+#'   currently implemented in `rcaiman`: `"simple"` and `"free_form"`.
+#' @param model_type character vector of length one. Model type used to develop a
+#'   radiometric correction. Only `"polynomial"` is currently implemented in
+#'   `rcaiman`.
+#' @param parameters A named list of model parameters. Model parameters defining
+#'   the radiometric correction, following the conventions of the selected
+#'   `model_type`. List names must be coercible to numeric values representing
+#'   f-numbers.
 #'
 #' @inheritParams add_geometry_spec
 #'
@@ -34,13 +51,17 @@ add_radiometry_spec <- function(
     geometry_id,
     id,
     type = "vignetting",
-    method,
-    model,
+    scheme,
+    model_type,
     parameters,
-    date,
+    date = NULL,
     notes = NULL,
     contact_information = NULL
 ) {
+
+  if (is.null(date)) {
+    date <- Sys.Date()
+  }
 
   if (!inherits(registry, "hemispherical_camera_registry")) {
     stop(
@@ -50,6 +71,7 @@ add_radiometry_spec <- function(
   }
 
   .check_vector(geometry_id, "character", 1)
+  .assert_id(geometry_id)
   if (is.null(registry[[geometry_id]])) {
     stop(
       sprintf("Geometry spec with id '%s' does not exist in this registry.", geometry_id),
@@ -72,10 +94,36 @@ add_radiometry_spec <- function(
     )
   }
 
-  .assert_choice(type, "vignetting")
-  .assert_choice(method, c("simple", "photometric_sphere"))
-  .assert_choice(model, "polynomial")
-  .check_vector(parameters, "numeric")
+  # .assert_choice(type, "vignetting")
+  # .assert_choice(scheme, c("simple", "photometric_sphere"))
+  # .assert_choice(model_type, "polynomial")
+  .check_vector(type, "character", 1)
+  .check_vector(type, "character", 1)
+  if (!is.list(parameters)) {
+    stop("`parameters` must be a list.")
+  }
+  nms <- names(parameters)
+  if (is.null(nms) || any(nms == "")) {
+    stop("`parameters` must be a named list with names representing aperture values.")
+  }
+  aperture_num <- suppressWarnings(as.numeric(nms))
+  if (any(is.na(aperture_num))) {
+    stop("All `parameters` names must be coercible to numeric aperture values (f-numbers).")
+  }
+  if (any(!is.finite(aperture_num)) || any(aperture_num <= 0)) {
+    stop("Aperture values in `parameters` must be positive and finite.")
+  }
+  if (any(duplicated(aperture_num))) {
+    stop("Duplicated aperture values detected in `parameters`.")
+  }
+  ok <- vapply(
+    parameters,
+    function(x) is.numeric(x) && length(x) >= 1,
+    logical(1)
+  )
+  if (!all(ok)) {
+    stop("Each element of `parameters` must be a numeric vector of length >= 1.")
+  }
   .check_vector(date, "date", 1)
   .check_vector(notes, "character", 1, allow_null = TRUE)
   .check_vector(contact_information, "character", 1, allow_null = TRUE)
@@ -83,8 +131,8 @@ add_radiometry_spec <- function(
   radiometry_spec <- list(
     id = id,
     type = type,
-    method = method,
-    model = model,
+    scheme = scheme,
+    model_type = model_type,
     parameters = parameters,
     date = date,
     notes = notes,

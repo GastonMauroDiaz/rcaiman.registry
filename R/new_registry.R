@@ -10,9 +10,9 @@
 #' correspond to typical acquisition setups such as:
 #'
 #' \itemize{
-#'   \item an image acquisition device with or without an auxiliary hemispherical lens,
+#'   \item a reflex or mirrorless camera body with an interchangeable lens,
 #'   \item a compact camera (camera body with a fixed lens) with an auxiliary lens,
-#'   \item a reflex or mirrorless camera body with an interchangeable lens.
+#'   \item an image acquisition device with or without an auxiliary hemispherical lens.
 #' }
 #'
 #' For this reason, information related to camera bodies, devices, lenses, and
@@ -23,9 +23,9 @@
 #' `"hemispherical_camera_registry"`. After creation, it can be inspected and
 #' edited manually using base R tools if needed.
 #'
-#' Calibration information must be added explicitly using [add_geometry_spec()]
-#' and [add_radiometry_spec()], allowing multiple calibrations to be associated
-#' with the same instrument over time.
+#' Geometry and radiometry specifications must be added explicitly using
+#' [add_geometry_spec()] and [add_radiometry_spec()]. Multiple specifications
+#' can be associated with the same instrument.
 #'
 #' Objects stored in a registry are assumed to be technically valid.
 #'
