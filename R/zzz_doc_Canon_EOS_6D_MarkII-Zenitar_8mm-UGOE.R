@@ -6,7 +6,8 @@
 #'
 #' @format
 #' An object of class \code{hemispherical_camera_registry} containing
-#' one geometry specification and two associated radiometry specification.
+#' two geometry specification. Only one of them with an associated radiometry
+#' specification.
 #'
 #' @details
 #' Both geometry and radiometry specs tagged as "simple_method" were obtained
@@ -18,14 +19,14 @@
 #'
 #' The simple method was carried out at f/22. Fig. 1 and Fig. 2 show the resulting models.
 #'
- #' \if{html}{\figure{Canon_EOS_6D_MarkII.Zenitar_8mm.University_of_Goettingen_1.jpg}{options: style="display:block;margin:0 auto;max-width:90%;width:750px;"}}
-#' \if{latex}{\figure{Canon_EOS_6D_MarkII.Zenitar_8mm.University_of_Goettingen_1.jpg}}
+ #' \if{html}{\figure{Canon_EOS_6D_MarkII.Zenitar_8mm.UGOE_1.jpg}{options: style="display:block;margin:0 auto;max-width:90%;width:750px;"}}
+#' \if{latex}{\figure{Canon_EOS_6D_MarkII.Zenitar_8mm.UGOE_1.jpg}}
 #' _Figure 1. Geometric data (the data points) taken with the simple method and the
 #' Canon EOS 6D Mark II with the Zenitar 8mm set to f/22 and the model fit to this
 #' data (the solid line)_
 #'
-#' \if{html}{\figure{Canon_EOS_6D_MarkII.Zenitar_8mm.University_of_Goettingen_2.jpg}{options: style="display:block;margin:0 auto;max-width:90%;width:750px;"}}
-#' \if{latex}{\figure{Canon_EOS_6D_MarkII.Zenitar_8mm.University_of_Goettingen_2.jpg}}
+#' \if{html}{\figure{Canon_EOS_6D_MarkII.Zenitar_8mm.UGOE_2.jpg}{options: style="display:block;margin:0 auto;max-width:90%;width:750px;"}}
+#' \if{latex}{\figure{Canon_EOS_6D_MarkII.Zenitar_8mm.UGOE_2.jpg}}
 #' _Figure 2. Radiometric data (the data points) taken with the simple method and the
 #' Canon EOS 6D Mark II with the Zenitar 8mm set to f/22 and the model fit to this
 #' data (the solid line)_
@@ -49,12 +50,12 @@
 #' negligible loss of accuracy.
 
 #'
-#' \if{html}{\figure{Canon_EOS_6D_MarkII.Zenitar_8mm.University_of_Goettingen_3.jpg}{options: style="display:block;margin:0 auto;max-width:90%;width:750px;"}}
-#' \if{latex}{\figure{Canon_EOS_6D_MarkII.Zenitar_8mm.University_of_Goettingen_3.jpg}}
+#' \if{html}{\figure{Canon_EOS_6D_MarkII.Zenitar_8mm.UGOE_3.jpg}{options: style="display:block;margin:0 auto;max-width:90%;width:750px;"}}
+#' \if{latex}{\figure{Canon_EOS_6D_MarkII.Zenitar_8mm.UGOE_3.jpg}}
 #' _Figure 3. Uncorrected Relative radiance of a clear sky measured with
 #' the Canon EOS 6D Mark II with the Zenitar 8mm._
 #'
 #'
 #' @references \insertAllCited{}
 #'
-"Canon_EOS_6D_MarkII.Zenitar_8mm.University_of_Goettingen"
+"Canon_EOS_6D_MarkII.Zenitar_8mm.UGOE"

@@ -6,7 +6,7 @@
 \alias{rcaiman.registry-package}
 \title{rcaiman.registry: Instrument Registry for CAnopy IMage ANalysis}
 \description{
-Provides a structured registry of instrument specifications and calibration metadata for canopy image analysis within the rcaiman ecosystem.
+Provides a structured registry of instrument specifications and calibration metadata used by rcaiman for canopy image analysis.
 }
 \seealso{
 Useful links:

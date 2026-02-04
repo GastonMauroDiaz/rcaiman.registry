@@ -6,8 +6,7 @@
 #'
 #' @format
 #' An object of class \code{hemispherical_camera_registry} containing
-#' two geometry specification. Only one of them with an associated radiometry
-#' specification.
+#' one geometry specification and two associated radiometry specification.
 #'
 #' @details
 #' Fig. 1 shows the Nikon D610 digital camera equipped with the Nikkor 8–15mm

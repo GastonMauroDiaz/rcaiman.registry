@@ -75,19 +75,20 @@ correspond to typical acquisition setups such as:
 For this reason, information related to camera bodies, devices, lenses, and
 auxiliary lenses is stored internally as separate components, each with its
 own identity (model, manufacturer, serial number).
-
-The returned object is a plain R list with class
-\code{"hemispherical_camera_registry"}. After creation, it can be inspected and
-edited manually using base R tools if needed.
-
-Geometry and radiometry specifications must be added explicitly using
-\code{\link[=add_geometry_spec]{add_geometry_spec()}} and \code{\link[=add_radiometry_spec]{add_radiometry_spec()}}. Multiple specifications
-can be associated with the same instrument.
-
-Objects stored in a registry are assumed to be technically valid.
 }
-\note{
-This object is intentionally simple and can be edited manually using base R
-tools. Manual edits may break internal assumptions used by downstream
-functions.
+\examples{
+foo <- new_registry(
+  "Nikon_D610.Nikkor_8mm.CIEFAP",
+  body = "D610",
+  body_manufacturer = "NIKON CORP",
+  body_serial = "9023728",
+  lens = "AF-S FISHEYE NIKKOR 8-15mm 1:3.5-4.5E ED",
+  lens_manufacturer = "NIKON CORP",
+  lens_serial = "210020",
+  institution = "CIEFAP"
+)
+}
+\seealso{
+\code{\link[=add_file_identity]{add_file_identity()}}, \code{\link[=add_embedded_metadata_identity]{add_embedded_metadata_identity()}}, \code{\link[=add_geometry_spec]{add_geometry_spec()}},
+\code{\link[=add_radiometry_spec]{add_radiometry_spec()}}
 }

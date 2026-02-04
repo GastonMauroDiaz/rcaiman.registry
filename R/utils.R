@@ -151,10 +151,49 @@
   invisible(TRUE)
 }
 
-.assert_id <- function(id) {
+.assert_id <- function(id, name = deparse(substitute(id))) {
   if (!grepl("^[a-z0-9_]+$", id)) {
     stop(
-      "`id` must use snake_case and contain only lowercase letters, numbers, and underscores."
+      sprintf("`%s`  must use snake_case and contain only lowercase letters, numbers, and underscores.", name)
     )
   }
 }
+
+.is_geometry_spec <- function(x) {
+  is.list(x) &&
+    !is.null(x$radiometry) &&
+    is.list(x$radiometry)
+}
+
+.is_embedded_metadata_identity <- function(x) {
+  is.list(x) &&
+    !is.null(x$namespace) &&
+    !is.null(x$rules) &&
+    is.list(x$rules)
+}
+
+.is_file_identity <- function(x) {
+  is.list(x) && !is.null(x$extension)
+}
+
+.split_registry_components <- function(registry) {
+  stopifnot(inherits(registry, "hemispherical_camera_registry"))
+
+  ## Instrument identity is ontologically unique and excluded
+  components <- registry[names(registry) != "instrument_identity"]
+
+  is_geometry  <- vapply(components, .is_geometry_spec, logical(1))
+  is_embedded  <- vapply(components, .is_embedded_metadata_identity, logical(1))
+  is_file      <- vapply(components, .is_file_identity, logical(1))
+
+  list(
+    components            = components,
+    # is_geometry            = is_geometry,
+    # is_embedded_metadata   = is_embedded,
+    # is_file_identity       = is_file,
+    geometry_ids           = names(components)[is_geometry],
+    embedded_metadata_ids  = names(components)[is_embedded],
+    file_identity_ids      = names(components)[is_file]
+  )
+}
+

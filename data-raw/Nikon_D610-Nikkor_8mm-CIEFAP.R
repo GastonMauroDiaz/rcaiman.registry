@@ -13,6 +13,29 @@ Nikon_D610.Nikkor_8mm.CIEFAP <- new_registry(
   institution = "CIEFAP"
 )
 
+Nikon_D610.Nikkor_8mm.CIEFAP <- add_file_identity(
+  Nikon_D610.Nikkor_8mm.CIEFAP,
+  id = "raw",
+  extension = "NEF",
+  filename_pattern = "^DSC_[0-9]{4}$"
+)
+
+Nikon_D610.Nikkor_8mm.CIEFAP <- add_embedded_metadata_identity(
+  Nikon_D610.Nikkor_8mm.CIEFAP,
+  id = "exif_01",
+  namespace = "exif",
+  rules = list(
+    "Camera Model Name" = "NIKON D610",
+    "Serial Number" = "9023728",
+    "Lens" = "8-15mm f/3.5-4.5",
+    "Firmware Version" = "1.01",
+    "CFA Pattern" = "[Red,Green][Green,Blue]"
+  ),
+  firmware_version = "1.01",
+  notes = "Taken with ExifTool Version Number 12.92",
+  contact_information = "gastonmaurodiaz@gmail.com"
+)
+
 Nikon_D610.Nikkor_8mm.CIEFAP <- add_geometry_spec(
   Nikon_D610.Nikkor_8mm.CIEFAP,
   id = "simple_method",
@@ -21,6 +44,7 @@ Nikon_D610.Nikkor_8mm.CIEFAP <- add_geometry_spec(
   horizon_radius = 947,
   max_zenith_angle = 92.8,
   dim = c(3040, 2014),
+  firmware_version = "1.01",
   notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
   contact_information = "gastonmaurodiaz@gmail.com"
 )
@@ -33,6 +57,7 @@ Nikon_D610.Nikkor_8mm.CIEFAP <- add_radiometry_spec(
   scheme = "simple",
   model_type = "polynomial",
   parameters = list("3.5" = c(0.0302, 0.320, 0.0908)),
+  firmware_version = "1.01",
   notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
   contact_information = "gastonmaurodiaz@gmail.com"
 )
@@ -60,6 +85,7 @@ Nikon_D610.Nikkor_8mm.CIEFAP <- add_radiometry_spec(
     "18.0" =	c(-0.0507	,	0.1840	,	-0.2500	,	0.1380),
     "20.0"	=	c(-0.0424	,	0.1590	,	-0.2270	,	0.1320)
     ),
+  firmware_version = "1.01",
   notes = "Cross-calibration using the simple method as reference with data taken under a clear sky at dusk.",
   contact_information = "gastonmaurodiaz@gmail.com"
 )

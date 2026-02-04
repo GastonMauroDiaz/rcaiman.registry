@@ -27,6 +27,10 @@
 #'   angle (deg) that the system is capable of observing.
 #' @param dim integer-like numeric vector of length two. Width and height in
 #'   pixels of the raster from which `zenith_colrow` was derived.
+#' @param firmware_version optional character vector of length one.
+#'   Firmware version of the image acquisition system at the time the
+#'   calibration images were acquired. This information is stored for
+#'   documentation and traceability purposes.
 #' @param notes optional character vector of length one. Free-form notes
 #'   providing context, scope, assumptions, or references relevant to this
 #'   specification (e.g. publications).
@@ -39,6 +43,30 @@
 #'
 #' @export
 #'
+#' @examples
+#' foo <- new_registry(
+#'   "Nikon_D610.Nikkor_8mm.CIEFAP",
+#'   body = "D610",
+#'   body_manufacturer = "NIKON CORP",
+#'   body_serial = "9023728",
+#'   lens = "AF-S FISHEYE NIKKOR 8-15mm 1:3.5-4.5E ED",
+#'   lens_manufacturer = "NIKON CORP",
+#'   lens_serial = "210020",
+#'   institution = "CIEFAP"
+#' )
+#'
+#' foo <- add_geometry_spec(
+#'   foo,
+#'   id = "simple_method",
+#'   lens_coef = signif(c(1306,24.8,-56.2)/1894,3),
+#'   zenith_colrow = c(1500, 997),
+#'   horizon_radius = 947,
+#'   max_zenith_angle = 92.8,
+#'   dim = c(3040, 2014),
+#'   firmware_version = "1.01",
+#'   notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
+#'   contact_information = "gastonmaurodiaz@gmail.com"
+#' )
 add_geometry_spec <- function(
     registry,
     id,
@@ -48,6 +76,7 @@ add_geometry_spec <- function(
     horizon_radius,
     max_zenith_angle = NULL,
     dim = NULL,
+    firmware_version = NULL,
     notes = NULL,
     contact_information = NULL
 ) {
@@ -63,14 +92,13 @@ add_geometry_spec <- function(
     )
   }
 
+  .check_vector(id, "character", 1)
   if (!is.null(registry[[id]])) {
     stop(
       sprintf("A geometry spec with id '%s' already exists in this registry.", id),
       call. = FALSE
     )
   }
-
-  .check_vector(id, "character", 1)
   .assert_id(id)
   .check_vector(date, "date", 1)
   .check_vector(lens_coef, "numeric")
@@ -78,6 +106,7 @@ add_geometry_spec <- function(
   .check_vector(horizon_radius, "integerish", length = 1)
   .check_vector(max_zenith_angle, "numeric", length = 1, allow_null = TRUE)
   .check_vector(dim, "integerish", length = 2, allow_null = TRUE)
+  .check_vector(firmware_version, "character", 1, allow_null = TRUE)
   .check_vector(notes, "character", 1, allow_null = TRUE)
   .check_vector(contact_information, "character", 1, allow_null = TRUE)
 
@@ -89,6 +118,7 @@ add_geometry_spec <- function(
     max_zenith_angle = max_zenith_angle,
     dim = dim,
     date = date,
+    firmware_version = firmware_version,
     notes = notes,
     contact_information = contact_information,
     radiometry = list()

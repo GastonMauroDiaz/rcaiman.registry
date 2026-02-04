@@ -58,32 +58,57 @@ print.hemispherical_camera_registry <- function(x, ...) {
     cat("Institution:   ", im$institution, "\n", sep = "")
   }
 
-  cat("\nComponents\n")
-  cat("----------\n")
-
   .print_component("Device", im$device)
   .print_component("Camera body", im$body)
   .print_component("Lens", im$lens)
   .print_component("Auxiliary lens", im$auxiliary_lens)
 
-  ## Geometry specs
-  geom_ids <- setdiff(names(x), "instrument_metadata")
+  # Data added to the registry
+  ## Split components by ontology
+  registry_components <- .split_registry_components(x)
 
-  cat("\nGeometry specs\n")
-  cat("--------------\n")
+  cat("\nFile identity\n")
+  cat("-------------\n")
+
+  file_identity_ids <- registry_components$file_identity_ids
+
+  if (length(file_identity_ids) == 0) {
+    cat("No file identities registered\n")
+  } else {
+    cat(length(file_identity_ids), "file identity(ies)\n\n", sep = " ")
+    for (eid in file_identity_ids) {
+      cat("* ", eid, "\n", sep = "")
+    }
+  }
+
+  cat("\nEmbedded metadata identity\n")
+  cat("--------------------------\n")
+
+  embedded_metadata_ids <- registry_components$embedded_metadata_ids
+
+  if (length(embedded_metadata_ids) == 0) {
+    cat("No embedded metadata identities registered\n")
+  } else {
+    cat(length(embedded_metadata_ids), "embeded metadata identity(ies)\n\n", sep = " ")
+    for (eid in embedded_metadata_ids) {
+      cat("* ", eid, "\n", sep = "")
+    }
+  }
+
+  cat("\nSpecs\n")
+  cat("-----\n")
+
+  geom_ids <- registry_components$geometry_ids
 
   if (length(geom_ids) == 0) {
     cat("No geometry specs registered\n")
   } else {
     cat(length(geom_ids), "geometry spec(s)\n\n", sep = " ")
     for (gid in geom_ids) {
-      g <- x[[gid]]
-      n_rad <- length(g$radiometry)
-
+      g <- registry_components$components[[gid]]
       cat("* ", gid, "\n", sep = "")
 
       rad_ids <- names(g$radiometry)
-
       if (length(rad_ids) == 0) {
         cat("  Radiometry specs: none\n")
       } else {
@@ -92,7 +117,6 @@ print.hemispherical_camera_registry <- function(x, ...) {
           cat("    - ", rid, "\n", sep = "")
         }
       }
-
     }
   }
 

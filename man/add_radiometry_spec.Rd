@@ -13,6 +13,7 @@ add_radiometry_spec(
   model_type,
   parameters,
   date = NULL,
+  firmware_version = NULL,
   notes = NULL,
   contact_information = NULL
 )
@@ -29,7 +30,7 @@ specification to which the radiometry spec will be attached.}
 Must use snake_case (lowercase letters, numbers, and underscores only)}
 
 \item{type}{character vector of length one. Type of radiometric correction.
-#'   Only "vignetting" is currently supported.}
+Only "vignetting" is currently supported.}
 
 \item{scheme}{character vector of length one. Calibration scheme defining
 the modeling assumptions used by the core for radiometric correction.
@@ -48,6 +49,11 @@ f-numbers.}
 
 \item{date}{optional \code{\link{Date}} object. Date when the specification was added
 to the registry. If \code{NULL}, the current system date is used automatically.}
+
+\item{firmware_version}{optional character vector of length one.
+Firmware version of the image acquisition system at the time the
+calibration images were acquired. This information is stored for
+documentation and traceability purposes.}
 
 \item{notes}{optional character vector of length one. Free-form notes
 providing context, scope, assumptions, or references relevant to this
@@ -75,4 +81,42 @@ is defined by the functions that consume the registry (e.g.
 \code{\link[rcaiman:correct_vignetting]{rcaiman::correct_vignetting()}}), not by the registry itself. The registry
 stores parameter values together with the minimal semantic information
 required for their correct interpretation.
+}
+\examples{
+foo <- new_registry(
+  "Nikon_D610.Nikkor_8mm.CIEFAP",
+  body = "D610",
+  body_manufacturer = "NIKON CORP",
+  body_serial = "9023728",
+  lens = "AF-S FISHEYE NIKKOR 8-15mm 1:3.5-4.5E ED",
+  lens_manufacturer = "NIKON CORP",
+  lens_serial = "210020",
+  institution = "CIEFAP"
+)
+
+foo <- add_geometry_spec(
+  foo,
+  id = "simple_method",
+  lens_coef = signif(c(1306,24.8,-56.2)/1894,3),
+  zenith_colrow = c(1500, 997),
+  horizon_radius = 947,
+  max_zenith_angle = 92.8,
+  dim = c(3040, 2014),
+  firmware_version = "1.01",
+  notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
+  contact_information = "gastonmaurodiaz@gmail.com"
+)
+
+foo <- add_radiometry_spec(
+  foo,
+  geometry_id = "simple_method",
+  id = "simple_method",
+  type = "vignetting",
+  scheme = "simple",
+  model_type = "polynomial",
+  parameters = list("3.5" = c(0.0302, 0.320, 0.0908)),
+  firmware_version = "1.01",
+  notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
+  contact_information = "gastonmaurodiaz@gmail.com"
+)
 }

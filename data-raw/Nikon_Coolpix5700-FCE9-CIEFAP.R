@@ -1,7 +1,5 @@
 ## code to prepare `Nikon_Coolpix5700.FCE9.CIEFAP` dataset goes here
 
-# This file was created with usethis::use_data_raw("Nikon_Coolpix5700.FCE9.CIEFAP")
-
 Nikon_Coolpix5700.FCE9.CIEFAP <- new_registry(
   "Nikon_Coolpix5700.FCE9.CIEFAP",
   body = "E5700",
@@ -12,6 +10,33 @@ Nikon_Coolpix5700.FCE9.CIEFAP <- new_registry(
   auxiliary_lens = "Fisheye Converter FC-E9 0.2x",
   auxiliary_lens_manufacturer = "NIKON CORP",
   institution = "CIEFAP"
+)
+
+Nikon_Coolpix5700.FCE9.CIEFAP <- add_file_identity(
+  Nikon_Coolpix5700.FCE9.CIEFAP,
+  id = "raw",
+  extension = "NEF",
+  filename_pattern = "^DSCN[0-9]{4}$"
+)
+
+Nikon_Coolpix5700.FCE9.CIEFAP <- add_file_identity(
+  Nikon_Coolpix5700.FCE9.CIEFAP,
+  id = "jpeg",
+  extension = "JPG",
+  filename_pattern = "^DSCN[0-9]{4}$"
+)
+
+Nikon_Coolpix5700.FCE9.CIEFAP <- add_embedded_metadata_identity(
+  Nikon_Coolpix5700.FCE9.CIEFAP,
+  id = "exif_01",
+  namespace = "exif",
+  rules = list(
+    "Camera Model Name" = "E5700",
+    "Software" = "E5700v1.1",
+    "CFA Pattern" = "[Yellow,Cyan][Green,Magenta]"
+  ),
+  notes = "Taken with ExifTool Version Number 12.92",
+  contact_information = "gastonmaurodiaz@gmail.com"
 )
 
 Nikon_Coolpix5700.FCE9.CIEFAP <- add_geometry_spec(

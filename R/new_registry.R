@@ -19,16 +19,6 @@
 #' auxiliary lenses is stored internally as separate components, each with its
 #' own identity (model, manufacturer, serial number).
 #'
-#' The returned object is a plain R list with class
-#' `"hemispherical_camera_registry"`. After creation, it can be inspected and
-#' edited manually using base R tools if needed.
-#'
-#' Geometry and radiometry specifications must be added explicitly using
-#' [add_geometry_spec()] and [add_radiometry_spec()]. Multiple specifications
-#' can be associated with the same instrument.
-#'
-#' Objects stored in a registry are assumed to be technically valid.
-#'
 #' @param id character vector of length one. Unique identifier of the camera
 #'   system within a project, institution, or personal workflow.
 #' @param body optional character vector of length one. Camera body model.
@@ -48,14 +38,24 @@
 #' @param institution optional character vector of length one. Institution where
 #'   the instrument is usually stored.
 #'
-#' @note
-#' This object is intentionally simple and can be edited manually using base R
-#' tools. Manual edits may break internal assumptions used by downstream
-#' functions.
-#'
 #' @return An object of class \link{hemispherical_camera_registry}.
 #'
+#' @seealso [add_file_identity()], [add_embedded_metadata_identity()], [add_geometry_spec()],
+#'   [add_radiometry_spec()]
+#'
 #' @export
+#'
+#' @examples
+#' foo <- new_registry(
+#'   "Nikon_D610.Nikkor_8mm.CIEFAP",
+#'   body = "D610",
+#'   body_manufacturer = "NIKON CORP",
+#'   body_serial = "9023728",
+#'   lens = "AF-S FISHEYE NIKKOR 8-15mm 1:3.5-4.5E ED",
+#'   lens_manufacturer = "NIKON CORP",
+#'   lens_serial = "210020",
+#'   institution = "CIEFAP"
+#' )
 new_registry <- function(
     id,
     body = NULL,

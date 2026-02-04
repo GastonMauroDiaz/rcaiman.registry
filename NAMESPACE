@@ -2,6 +2,8 @@
 
 S3method(print,hemispherical_camera_registry)
 S3method(summary,hemispherical_camera_registry)
+export(add_embedded_metadata_identity)
+export(add_file_identity)
 export(add_geometry_spec)
 export(add_radiometry_spec)
 export(new_registry)

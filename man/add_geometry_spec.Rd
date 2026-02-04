@@ -13,6 +13,7 @@ add_geometry_spec(
   horizon_radius,
   max_zenith_angle = NULL,
   dim = NULL,
+  firmware_version = NULL,
   notes = NULL,
   contact_information = NULL
 )
@@ -50,6 +51,11 @@ angle (deg) that the system is capable of observing.}
 \item{dim}{integer-like numeric vector of length two. Width and height in
 pixels of the raster from which \code{zenith_colrow} was derived.}
 
+\item{firmware_version}{optional character vector of length one.
+Firmware version of the image acquisition system at the time the
+calibration images were acquired. This information is stored for
+documentation and traceability purposes.}
+
 \item{notes}{optional character vector of length one. Free-form notes
 providing context, scope, assumptions, or references relevant to this
 specification (e.g. publications).}
@@ -64,4 +70,29 @@ appended.
 \description{
 Add a geometry specification to an existing hemispherical
 camera registry.
+}
+\examples{
+foo <- new_registry(
+  "Nikon_D610.Nikkor_8mm.CIEFAP",
+  body = "D610",
+  body_manufacturer = "NIKON CORP",
+  body_serial = "9023728",
+  lens = "AF-S FISHEYE NIKKOR 8-15mm 1:3.5-4.5E ED",
+  lens_manufacturer = "NIKON CORP",
+  lens_serial = "210020",
+  institution = "CIEFAP"
+)
+
+foo <- add_geometry_spec(
+  foo,
+  id = "simple_method",
+  lens_coef = signif(c(1306,24.8,-56.2)/1894,3),
+  zenith_colrow = c(1500, 997),
+  horizon_radius = 947,
+  max_zenith_angle = 92.8,
+  dim = c(3040, 2014),
+  firmware_version = "1.01",
+  notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
+  contact_information = "gastonmaurodiaz@gmail.com"
+)
 }

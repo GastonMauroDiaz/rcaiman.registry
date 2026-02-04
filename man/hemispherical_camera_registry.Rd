@@ -5,39 +5,51 @@
 \alias{hemispherical_camera_registry}
 \title{Instrument registry}
 \description{
-Objects of class \code{hemispherical_camera_registry} represent instrument
-specifications and calibration records used by the rcaiman ecosystem. They
-are intended to store instrument metadata and one or more calibrations,
-together with soft metadata describing provenance.
+Objects of class \code{hemispherical_camera_registry} describe instrument
+specifications used by rcaiman. They store instrument metadata together with
+identity signatures and geometric and radiometric specifications that define
+how canopy images are identified, interpreted, and processed.
 }
 \details{
 This is an S3 class implemented as a named list. Its purpose is to make
-explicit, inspectable, and auditable the geometric and radiometric
-assumptions applied during canopy image preprocessing.
+explicit, inspectable, and auditable the geometric, radiometric, and
+identity-related assumptions applied during canopy image preprocessing.
 
-The registry may contain multiple calibrations for the same instrument.
-Metadata is intended to provide the information needed to decide which to
-choose, or a reference to where to find such information.
-}
-\section{Minimum operational contract}{
-
-A \code{hemispherical_camera_registry} object must provide enough information to:
+Within a registry entry, three distinct but related descriptive domains are
+represented:
 \itemize{
-\item map pixel radius to zenith angle,
-\item identify the optical center,
-\item define the usable image radius,
-\item correct radiometric attenuation (vignetting).
-}
+\item instrument metadata, which describes the physical acquisition system
+as a real-world object,
+\item file identity, which describes image files
+as observed externally (e.g. filename structure, extension), and
+\item metadata identity, which describes image files as inferred from their
+embedded metadata.
 }
 
+These domains are intentionally separated. A physical instrument exists
+independently of any particular file; EXIF metadata exists only as a trace
+left by an acquisition event; and file-level properties describe how image
+data are materialized as files by the acquisition system.
+
+A registry must contain one instrument metadata entry, which defines the
+physical acquisition system. But, for all other domains multiple entries area
+allowed, reflecting, for example, changes in firmware, acquisition settings,
+or calibration procedures.
+
+Objects stored in a registry are assumed to be technically valid.
+}
 \section{Structure}{
 
-The object is a named list with at least two elements:
+The object is a named list with at least one mandatory element:
 \describe{
-\item{instrument_metadata}{List describing the physical instrument and its provenance.}
-\item{calibrations}{Named list of calibration records, each with metadata,
-geometry specifications and associated optional radiometry specifications.}
+\item{instrument_metadata}{List describing the physical acquisition
+system and its provenance.}
 }
+
+All additional elements correspond to specifications associated with that
+instrument, such as geometry specifications, EXIF identities, or file
+identities. Geometry specifications may include nested radiometry
+specifications.
 }
 
 \seealso{

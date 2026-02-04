@@ -24,7 +24,7 @@
 #' @param id character vector of length one. Identifier of the radiometry spec.
 #'   Must use snake_case (lowercase letters, numbers, and underscores only)
 #' @param type character vector of length one. Type of radiometric correction.
-#' #'   Only "vignetting" is currently supported.
+#'   Only "vignetting" is currently supported.
 #' @param scheme character vector of length one. Calibration scheme defining
 #'   the modeling assumptions used by the core for radiometric correction.
 #'   The selected scheme determines the effective form of the model and the
@@ -46,6 +46,43 @@
 #'
 #' @export
 #'
+#' @examples
+#' foo <- new_registry(
+#'   "Nikon_D610.Nikkor_8mm.CIEFAP",
+#'   body = "D610",
+#'   body_manufacturer = "NIKON CORP",
+#'   body_serial = "9023728",
+#'   lens = "AF-S FISHEYE NIKKOR 8-15mm 1:3.5-4.5E ED",
+#'   lens_manufacturer = "NIKON CORP",
+#'   lens_serial = "210020",
+#'   institution = "CIEFAP"
+#' )
+#'
+#' foo <- add_geometry_spec(
+#'   foo,
+#'   id = "simple_method",
+#'   lens_coef = signif(c(1306,24.8,-56.2)/1894,3),
+#'   zenith_colrow = c(1500, 997),
+#'   horizon_radius = 947,
+#'   max_zenith_angle = 92.8,
+#'   dim = c(3040, 2014),
+#'   firmware_version = "1.01",
+#'   notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
+#'   contact_information = "gastonmaurodiaz@gmail.com"
+#' )
+#'
+#' foo <- add_radiometry_spec(
+#'   foo,
+#'   geometry_id = "simple_method",
+#'   id = "simple_method",
+#'   type = "vignetting",
+#'   scheme = "simple",
+#'   model_type = "polynomial",
+#'   parameters = list("3.5" = c(0.0302, 0.320, 0.0908)),
+#'   firmware_version = "1.01",
+#'   notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
+#'   contact_information = "gastonmaurodiaz@gmail.com"
+#' )
 add_radiometry_spec <- function(
     registry,
     geometry_id,
@@ -55,6 +92,7 @@ add_radiometry_spec <- function(
     model_type,
     parameters,
     date = NULL,
+    firmware_version = NULL,
     notes = NULL,
     contact_information = NULL
 ) {
@@ -71,7 +109,6 @@ add_radiometry_spec <- function(
   }
 
   .check_vector(geometry_id, "character", 1)
-  .assert_id(geometry_id)
   if (is.null(registry[[geometry_id]])) {
     stop(
       sprintf("Geometry spec with id '%s' does not exist in this registry.", geometry_id),
@@ -125,6 +162,7 @@ add_radiometry_spec <- function(
     stop("Each element of `parameters` must be a numeric vector of length >= 1.")
   }
   .check_vector(date, "date", 1)
+  .check_vector(firmware_version, "character", 1, allow_null = TRUE)
   .check_vector(notes, "character", 1, allow_null = TRUE)
   .check_vector(contact_information, "character", 1, allow_null = TRUE)
 
@@ -135,6 +173,7 @@ add_radiometry_spec <- function(
     model_type = model_type,
     parameters = parameters,
     date = date,
+    firmware_version = firmware_version,
     notes = notes,
     contact_information = contact_information
   )

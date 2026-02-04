@@ -6,7 +6,8 @@
 #'
 #' @format
 #' An object of class \code{hemispherical_camera_registry} containing
-#' one geometry specification and one associated radiometry specification.
+#' two geometry specification. Only one of them with an associated radiometry
+#' specification.
 #'
 #' @details
 #' Fig. 1 shows the Nikon Coolpix 5700 equipped with the Nikon FC-E9 fisheye
@@ -21,11 +22,14 @@
 #' It is valid for the JPEGs of maximum resolution produced by the
 #' camera.
 #'
-#' Both geometry and radiometry specs tagged as "simple_method" were obtained
-#' following the methodology described in
-#' \insertCite{Diaz2024;textual}{rcaiman}. Those calibration parameters are the
-#' reported in the publication.
-#'
+#' Although both geometry and radiometry specs were obtained following the
+#' methodology described in \insertCite{Diaz2024;textual}{rcaiman}, the
+#' calibration parameters stored in this object differ from those reported in
+#' the publication. The calibration parameters were revised in 2025, after
+#' reverting the decision to replace the horizon radius returned by
+#' [rcaiman::calibrate_lens()] with the one computed using
+#' [rcaiman::calc_diameter()]. These parameters therefore differ from those
+#' reported in \insertCite{Diaz2024;textual}{rcaiman}.
 #'
 #' @references \insertAllCited{}
 #'
