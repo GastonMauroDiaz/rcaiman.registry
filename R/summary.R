@@ -66,45 +66,48 @@ summary.hemispherical_camera_registry <- function(object, ...) {
       r <- rad[[rid]]
 
       cat("  Radiometry specification: ", rid, "\n", sep = "")
-      cat("    Type:       ", r$type, "\n", sep = "")
-      cat("    Scheme:     ", r$scheme, "\n", sep = "")
+      if (r$type == "vignetting_correction") {
+        cat("    Type:       ", r$type, "\n", sep = "")
+        cat("    Scheme:     ", r$scheme, "\n", sep = "")
 
-      if (!is.null(r$model_type)) {
-        cat("    Model type: ", r$model_type, "\n", sep = "")
-      }
-
-      params <- r$parameters
-
-      if (is.list(params) && length(params) > 0) {
-
-        ap <- suppressWarnings(as.numeric(names(params)))
-        ord <- order(ap)
-
-        ap <- ap[ord]
-        params <- params[ord]
-
-        cat("\n")
-        cat("    Aperture-dependent parameters:\n")
-        cat(
-          "      Available apertures (f-number): ",
-          paste(format(ap, trim = TRUE), collapse = ", "),
-          "\n", sep = ""
-        )
-        cat("      Number of parameter sets: ", length(ap), "\n", sep = "")
-        cat("      Number of coefficients per aperture:\n")
-
-        for (i in seq_along(ap)) {
-          cat(
-            "        f/",
-            format(ap[i], trim = TRUE),
-            " : ",
-            length(params[[i]]),
-            "\n",
-            sep = ""
-          )
+        if (!is.null(r$model_type)) {
+          cat("    Model type: ", r$model_type, "\n", sep = "")
         }
-      }
 
+        params <- r$parameters
+
+        if (is.list(params) && length(params) > 0) {
+
+          ap <- suppressWarnings(as.numeric(names(params)))
+          ord <- order(ap)
+
+          ap <- ap[ord]
+          params <- params[ord]
+
+          cat("\n")
+          cat("    Aperture-dependent parameters:\n")
+          cat(
+            "      Available apertures (f-number): ",
+            paste(format(ap, trim = TRUE), collapse = ", "),
+            "\n", sep = ""
+          )
+          cat("      Number of parameter sets: ", length(ap), "\n", sep = "")
+          cat("      Number of coefficients per aperture:\n")
+
+          for (i in seq_along(ap)) {
+            cat(
+              "        f/",
+              format(ap[i], trim = TRUE),
+              " : ",
+              length(params[[i]]),
+              "\n",
+              sep = ""
+            )
+          }
+        }
+      } else {
+        cat("    Type:       ", r$type, "\n", sep = "")
+      }
       cat("\n")
     }
   }

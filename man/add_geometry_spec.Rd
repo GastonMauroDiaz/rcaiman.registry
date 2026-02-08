@@ -11,6 +11,7 @@ add_geometry_spec(
   lens_coef,
   zenith_colrow,
   horizon_radius,
+  is_horizon_circle_clipped,
   max_zenith_angle = NULL,
   dim = NULL,
   firmware_version = NULL,
@@ -45,10 +46,18 @@ hemispherical image in pixel units, measured from the optical center
 (i.e., \code{2 * horizon_radius} must be an even integer, see
 \link[rcaiman:zenith_image]{rcaiman::zenith_image}).}
 
+\item{is_horizon_circle_clipped}{logical vector of length one. Indicates
+whether the horizon circle (90° zenith angle), obtained via model
+extrapolation when necesary, is clipped by the image matrix. If \code{FALSE},
+the geometry specification asserts that the complete horizon circle is
+fully included within the image extent, and this condition may be validated
+geometrically. If \code{TRUE}, horizon clipping is expected and no such
+validation is performed.}
+
 \item{max_zenith_angle}{optional numeric vector of length one. Maximum zenith
 angle (deg) that the system is capable of observing.}
 
-\item{dim}{integer-like numeric vector of length two. Width and height in
+\item{dim}{optional integer-like numeric vector of length two. Width and height in
 pixels of the raster from which \code{zenith_colrow} was derived.}
 
 \item{firmware_version}{optional character vector of length one.
@@ -89,6 +98,7 @@ foo <- add_geometry_spec(
   lens_coef = signif(c(1306,24.8,-56.2)/1894,3),
   zenith_colrow = c(1500, 997),
   horizon_radius = 947,
+  is_horizon_circle_clipped = FALSE,
   max_zenith_angle = 92.8,
   dim = c(3040, 2014),
   firmware_version = "1.01",

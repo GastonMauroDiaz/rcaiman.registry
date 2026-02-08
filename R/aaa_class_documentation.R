@@ -18,14 +18,14 @@
 #'     as a real-world object,
 #'     \item file identity, which describes image files
 #'     as observed externally (e.g. filename structure, extension), and
-#'     \item metadata identity, which describes image files as inferred from their
+#'     \item embedded metadata identity, which describes image files as inferred from their
 #'     embedded metadata.
 #'   }
 #'
 #' These domains are intentionally separated. A physical instrument exists
-#' independently of any particular file; EXIF metadata exists only as a trace
-#' left by an acquisition event; and file-level properties describe how image
-#' data are materialized as files by the acquisition system.
+#' independently of any particular file; EXIF metadata, for example, exists only
+#' as a trace left by an acquisition event; and file-level properties describe
+#' how image data are materialized as files by the acquisition system.
 #'
 #' A registry must contain one instrument metadata entry, which defines the
 #' physical acquisition system. But, for all other domains multiple entries area

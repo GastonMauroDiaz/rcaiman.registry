@@ -32,7 +32,7 @@ Nikon_D610.Nikkor_8mm.CIEFAP <- add_embedded_metadata_identity(
     "CFA Pattern" = "[Red,Green][Green,Blue]"
   ),
   firmware_version = "1.01",
-  notes = "Taken with ExifTool Version Number 12.92",
+  notes = "Produced with ExifTool Version Number 12.92",
   contact_information = "gastonmaurodiaz@gmail.com"
 )
 
@@ -42,6 +42,7 @@ Nikon_D610.Nikkor_8mm.CIEFAP <- add_geometry_spec(
   lens_coef = signif(c(1306,24.8,-56.2)/1894,3),
   zenith_colrow = c(1500, 997),
   horizon_radius = 947,
+  is_horizon_circle_clipped = FALSE,
   max_zenith_angle = 92.8,
   dim = c(3040, 2014),
   firmware_version = "1.01",
@@ -52,8 +53,22 @@ Nikon_D610.Nikkor_8mm.CIEFAP <- add_geometry_spec(
 Nikon_D610.Nikkor_8mm.CIEFAP <- add_radiometry_spec(
   Nikon_D610.Nikkor_8mm.CIEFAP,
   geometry_id = "simple_method",
+  id = "spectral_bands",
+  type = "interpretive_constraint",
+  cfa_pattern = matrix(c("Red", "Green1",
+                         "Green2", "Blue"), byrow = TRUE, ncol = 2),
+  spectral_mapping = list(Red = function(Red) Red,
+                          Green = function(Green1, Green2) (Green1+Green2)/2,
+                          Blue = function(Blue) Blue),
+  firmware_version = "1.01",
+  contact_information = "gastonmaurodiaz@gmail.com"
+)
+
+Nikon_D610.Nikkor_8mm.CIEFAP <- add_radiometry_spec(
+  Nikon_D610.Nikkor_8mm.CIEFAP,
+  geometry_id = "simple_method",
   id = "simple_method",
-  type = "vignetting",
+  type = "vignetting_correction",
   scheme = "simple",
   model_type = "polynomial",
   parameters = list("3.5" = c(0.0302, 0.320, 0.0908)),
@@ -66,7 +81,7 @@ Nikon_D610.Nikkor_8mm.CIEFAP <- add_radiometry_spec(
   Nikon_D610.Nikkor_8mm.CIEFAP,
   geometry_id = "simple_method",
   id = "cross_calibration",
-  type = "vignetting",
+  type = "vignetting_correction",
   scheme = "simple",
   model_type = "polynomial",
   parameters = list(

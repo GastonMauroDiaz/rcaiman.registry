@@ -33,22 +33,10 @@ Canon_EOS_5D.Sigma_8mm.EMY <- add_geometry_spec(
   lens_coef = c(0.702301, 0.043405, -0.05425),
   zenith_colrow = round(c(2190+90, 1453+34)/2,0),
   horizon_radius = 693,
+  is_horizon_circle_clipped = FALSE,
   dim = c(4476, 2954),
   firmware_version = "1.1.0",
-  notes = "From Mait Lang calibration plugin.",
-  contact_information = "lang@to.ee"
-)
-
-Canon_EOS_5D.Sigma_8mm.EMY <- add_radiometry_spec(
-  Canon_EOS_5D.Sigma_8mm.EMY,
-  geometry_id = "HSP",
-  id = "HSP",
-  type = "vignetting",
-  scheme = "free_form",
-  model_type = "legacy",
-  parameters = list( "0" = 0),
-  firmware_version = "1.1.0",
-  notes = "Full model available in rcaiman::correct_vignetting_legacy()",
+  notes = "Based on Mait Lang calibration plugin.",
   contact_information = "lang@to.ee"
 )
 

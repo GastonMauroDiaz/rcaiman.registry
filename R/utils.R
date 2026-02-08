@@ -188,12 +188,49 @@
 
   list(
     components            = components,
-    # is_geometry            = is_geometry,
-    # is_embedded_metadata   = is_embedded,
-    # is_file_identity       = is_file,
     geometry_ids           = names(components)[is_geometry],
     embedded_metadata_ids  = names(components)[is_embedded],
     file_identity_ids      = names(components)[is_file]
   )
+}
+
+.validate_geometry_spec <- function(geometry_spec) {
+
+  if (is.null(geometry_spec$is_horizon_circle_clipped)) {
+    return(invisible(TRUE))
+  }
+
+  if (geometry_spec$is_horizon_circle_clipped) {
+    return(invisible(TRUE))
+  }
+
+  ## full_circle requires dim
+  if (is.null(geometry_spec$dim)) {
+    warning(
+      "`is_horizon_circle_clipped = FALSE` was not validated due to the absence of `dim`.",
+      call. = FALSE
+    )
+  } else {
+    zenith <- geometry_spec$zenith_colrow
+    radius <- geometry_spec$horizon_radius
+    dim    <- geometry_spec$dim
+
+    ## Bounds of the circle
+    left   <- zenith[1] - radius
+    right  <- zenith[1] + radius
+    top    <- zenith[2] - radius
+    bottom <- zenith[2] + radius
+
+    if (left < 0 || top < 0 || right > dim[1] || bottom > dim[2]) {
+      msn <- paste0(
+              "Invalid geometry specification: `is_horizon_circle_clipped = FALSE`, ",
+              "but the extrapolated horizon circle (90° zenith angle) exceeds the image bounds. ",
+              "Set `is_horizon_circle_clipped = TRUE` if horizon clipping is expected."
+            )
+      stop(msn, call. = FALSE)
+    }
+
+    invisible(TRUE)
+  }
 }
 

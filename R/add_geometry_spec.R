@@ -23,9 +23,16 @@
 #'   90 deg (i.e. the horizon), and following the conventions used in `rcaiman`
 #'   (i.e., `2 * horizon_radius` must be an even integer, see
 #'   [rcaiman::zenith_image]).
+#' @param is_horizon_circle_clipped logical vector of length one. Indicates
+#'   whether the horizon circle (90° zenith angle), obtained via model
+#'   extrapolation when necesary, is clipped by the image matrix. If `FALSE`,
+#'   the geometry specification asserts that the complete horizon circle is
+#'   fully included within the image extent, and this condition may be validated
+#'   geometrically. If `TRUE`, horizon clipping is expected and no such
+#'   validation is performed.
 #' @param max_zenith_angle optional numeric vector of length one. Maximum zenith
 #'   angle (deg) that the system is capable of observing.
-#' @param dim integer-like numeric vector of length two. Width and height in
+#' @param dim optional integer-like numeric vector of length two. Width and height in
 #'   pixels of the raster from which `zenith_colrow` was derived.
 #' @param firmware_version optional character vector of length one.
 #'   Firmware version of the image acquisition system at the time the
@@ -61,6 +68,7 @@
 #'   lens_coef = signif(c(1306,24.8,-56.2)/1894,3),
 #'   zenith_colrow = c(1500, 997),
 #'   horizon_radius = 947,
+#'   is_horizon_circle_clipped = FALSE,
 #'   max_zenith_angle = 92.8,
 #'   dim = c(3040, 2014),
 #'   firmware_version = "1.01",
@@ -74,6 +82,7 @@ add_geometry_spec <- function(
     lens_coef,
     zenith_colrow,
     horizon_radius,
+    is_horizon_circle_clipped,
     max_zenith_angle = NULL,
     dim = NULL,
     firmware_version = NULL,
@@ -104,6 +113,7 @@ add_geometry_spec <- function(
   .check_vector(lens_coef, "numeric")
   .check_vector(zenith_colrow, "numeric", length = 2)
   .check_vector(horizon_radius, "integerish", length = 1)
+  .check_vector(is_horizon_circle_clipped, "logical")
   .check_vector(max_zenith_angle, "numeric", length = 1, allow_null = TRUE)
   .check_vector(dim, "integerish", length = 2, allow_null = TRUE)
   .check_vector(firmware_version, "character", 1, allow_null = TRUE)
@@ -115,6 +125,7 @@ add_geometry_spec <- function(
     lens_coef = lens_coef,
     zenith_colrow = zenith_colrow,
     horizon_radius = horizon_radius,
+    is_horizon_circle_clipped = is_horizon_circle_clipped,
     max_zenith_angle = max_zenith_angle,
     dim = dim,
     date = date,
@@ -123,6 +134,8 @@ add_geometry_spec <- function(
     contact_information = contact_information,
     radiometry = list()
   )
+
+  .validate_geometry_spec(geometry_spec)
 
   registry[[id]] <- geometry_spec
   registry

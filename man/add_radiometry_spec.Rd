@@ -8,10 +8,12 @@ add_radiometry_spec(
   registry,
   geometry_id,
   id,
-  type = "vignetting",
-  scheme,
-  model_type,
-  parameters,
+  type,
+  scheme = NULL,
+  model_type = NULL,
+  parameters = NULL,
+  cfa_pattern = NULL,
+  spectral_mapping = NULL,
   date = NULL,
   firmware_version = NULL,
   notes = NULL,
@@ -29,23 +31,44 @@ specification to which the radiometry spec will be attached.}
 \item{id}{character vector of length one. Identifier of the radiometry spec.
 Must use snake_case (lowercase letters, numbers, and underscores only)}
 
-\item{type}{character vector of length one. Type of radiometric correction.
-Only "vignetting" is currently supported.}
+\item{type}{character vector of length one. See \emph{Details}.}
 
 \item{scheme}{character vector of length one. Calibration scheme defining
 the modeling assumptions used by the core for radiometric correction.
 The selected scheme determines the effective form of the model and the
 constraints (if any) applied to its parameters. Recognized schemes
-currently implemented in \code{rcaiman}: \code{"simple"} and \code{"free_form"}.}
+currently implemented in \code{rcaiman}: \code{"simple"} and \code{"free_form"}. This argument is intended for use with
+\code{type = "vignetting_correction"}.}
 
 \item{model_type}{character vector of length one. Model type used to develop a
 radiometric correction. Only \code{"polynomial"} is currently implemented in
-\code{rcaiman}.}
+\code{rcaiman}. This argument is intended for use with
+\code{type = "vignetting_correction"}.}
 
-\item{parameters}{A named list of model parameters. Model parameters defining
+\item{parameters}{named list of model parameters. Model parameters defining
 the radiometric correction, following the conventions of the selected
 \code{model_type}. List names must be coercible to numeric values representing
-f-numbers.}
+f-numbers. This argument is intended for use with
+\code{type = "vignetting_correction"}.}
+
+\item{cfa_pattern}{character matrix of two rows by two columns. Declares the
+ordered set of color filter elements used by the sensor. This argument must
+be provided when \code{type = "interpretive_constraint"}. Values should
+correspond to semantic color labels (e.g. \code{"Red"}, \code{"Green"}, \code{"Blue"},
+\code{"Yellow"}, \code{"Cyan"}, \code{"Magenta"}), and reflect the CFA pattern as produced
+by the sensor. These declarations may intentionally override or contradict
+embedded metadata when such metadata is known to be incorrect.}
+
+\item{spectral_mapping}{optional named list. Declares how target spectral
+bands should be derived from sensor channels. This argument is intended for
+use with \code{type = "interpretive_constraint"}. Each element of the list must
+be named according to the target band (e.g. \code{"Red"}, \code{"Green"}, \code{"Blue"}).
+The corresponding value must be a function describing how that band is
+obtained from one or more spectral bands as declared in \code{cfa_pattern}. The
+formal arguments of each function define the source bands to be used and
+must match names in \code{cfa_pattern}. Functions must accept
+\code{\link[terra:SpatRaster-class]{terra::SpatRaster}} objects as input and return a single-layer
+\code{\link[terra:SpatRaster-class]{terra::SpatRaster}}.}
 
 \item{date}{optional \code{\link{Date}} object. Date when the specification was added
 to the registry. If \code{NULL}, the current system date is used automatically.}
@@ -71,16 +94,41 @@ Add a radiometry specification to an existing geometry
 specification in a hemispherical camera registry.
 }
 \details{
-Radiometry specifications intentionally separate \emph{parameter values} from
-\emph{model shape}. The \code{scheme} and \code{model_type} arguments provide the semantic
-context required by \code{rcaiman} to interpret those parameters and apply the
-corresponding correction.
+A radiometry specification describes how pixel values produced by an
+acquisition system should be interpreted or corrected from a radiometric
+point of view.
 
-This design is deliberate. The effective mathematical model applied to images
-is defined by the functions that consume the registry (e.g.
-\code{\link[rcaiman:correct_vignetting]{rcaiman::correct_vignetting()}}), not by the registry itself. The registry
-stores parameter values together with the minimal semantic information
-required for their correct interpretation.
+Radiometry specifications are always associated with a geometry
+specification, and may serve two conceptually distinct purposes:
+
+\itemize{
+\item to define a quantitative radiometric correction model (e.g. vignetting),
+\item to declare interpretive constraints required to correctly understand
+the spectral meaning of the recorded bands or operational conventions
+imposed by downstream processing requirements, even when they do not
+correspond to a physically accurate spectral interpretation, such as when cyan
+is assigned to blue.
+}
+
+The behavior and required arguments depend on the value of \code{type}.
+
+When \code{type = "vignetting_correction"}, the specification defines a parametric
+radiometric model. Arguments \code{scheme} and \code{model_type} provide the semantic
+context required by \code{rcaiman} to interpret \code{parameters} and apply the
+corresponding correction. The effective mathematical model applied to images
+is defined by \code{\link[rcaiman:correct_vignetting]{rcaiman::correct_vignetting()}}. Interpretative constraints
+are ignored.
+
+When \code{type = "interpretive_constraint"}, the specification declares
+constraints or conventions that affect how sensor data must be interpreted.
+At least one or these arguments must be provided: \code{cfa_pattern} and
+\code{spectral_mapping}. Modeling-related arguments are ignored.
+}
+\note{
+This function is declarative. It does not apply corrections or enforce
+interpretations. Its role is to register expert knowledge about the
+acquisition system in a form that can be inspected, audited, and
+explicitly used by downstream processing code.
 }
 \examples{
 foo <- new_registry(
@@ -100,6 +148,7 @@ foo <- add_geometry_spec(
   lens_coef = signif(c(1306,24.8,-56.2)/1894,3),
   zenith_colrow = c(1500, 997),
   horizon_radius = 947,
+  is_horizon_circle_clipped = FALSE,
   max_zenith_angle = 92.8,
   dim = c(3040, 2014),
   firmware_version = "1.01",
@@ -111,12 +160,23 @@ foo <- add_radiometry_spec(
   foo,
   geometry_id = "simple_method",
   id = "simple_method",
-  type = "vignetting",
+  type = "vignetting_correction",
   scheme = "simple",
   model_type = "polynomial",
   parameters = list("3.5" = c(0.0302, 0.320, 0.0908)),
   firmware_version = "1.01",
   notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
+  contact_information = "gastonmaurodiaz@gmail.com"
+)
+
+foo <- add_radiometry_spec(
+  foo,
+  geometry_id = "simple_method",
+  id = "spectral_bands",
+  type = "interpretive_constraint",
+  cfa_pattern = matrix(c("Red","Green",
+                         "Green","Blue"), byrow = TRUE, ncol = 2),
+  firmware_version = "1.01",
   contact_information = "gastonmaurodiaz@gmail.com"
 )
 }
