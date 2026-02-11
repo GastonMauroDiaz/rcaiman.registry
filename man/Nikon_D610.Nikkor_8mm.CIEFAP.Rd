@@ -5,8 +5,7 @@
 \alias{Nikon_D610.Nikkor_8mm.CIEFAP}
 \title{Specs for Nikon D610 with Nikkor 8–15mm fisheye (CIEFAP)}
 \format{
-An object of class \code{hemispherical_camera_registry} containing
-one geometry specification and two associated radiometry specification.
+An object of class \code{hemispherical_camera_registry}.
 }
 \usage{
 Nikon_D610.Nikkor_8mm.CIEFAP
@@ -25,7 +24,7 @@ fisheye lens fixed at 8 mm.
 
 Both geometry and radiometry specs tagged as "simple_method" were obtained
 following the methodology described in
-\insertCite{Diaz2024;textual}{rcaiman}. Those calibration parameters are the
+\insertCite{Diaz2024;textual}{rcaiman.registry}. Those calibration parameters are the
 reported in the publication.
 
 Since the simple method was carried out at f/3.5, a cross-calibration was

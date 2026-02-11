@@ -5,9 +5,7 @@
 \alias{Canon_EOS_6D_MarkII.Zenitar_8mm.UGOE}
 \title{Specs for Canon EOS 6D Mark II with Zenitar 8mm}
 \format{
-An object of class \code{hemispherical_camera_registry} containing
-two geometry specification. Only one of them with an associated radiometry
-specification.
+An object of class \code{hemispherical_camera_registry}.
 }
 \usage{
 Canon_EOS_6D_MarkII.Zenitar_8mm.UGOE
@@ -19,7 +17,7 @@ Mark II with MC-Zenitar 8mm.
 \details{
 Both geometry and radiometry specs tagged as "simple_method" were obtained
 following the methodology described in
-\insertCite{Diaz2024;textual}{rcaiman}.
+\insertCite{Diaz2024;textual}{rcaiman.registry}.
 
 The lens apperture of the Zenitar 8mm can be mechanically set at f/22, f/16, f/11, f/8, f/5.6,
 f/4, and f/3.5 (The value is not stored in the image metadata).

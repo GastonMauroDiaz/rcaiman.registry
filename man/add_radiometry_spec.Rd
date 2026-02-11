@@ -14,6 +14,7 @@ add_radiometry_spec(
   parameters = NULL,
   cfa_pattern = NULL,
   spectral_mapping = NULL,
+  offset_value = NULL,
   date = NULL,
   firmware_version = NULL,
   notes = NULL,
@@ -37,12 +38,12 @@ Must use snake_case (lowercase letters, numbers, and underscores only)}
 the modeling assumptions used by the core for radiometric correction.
 The selected scheme determines the effective form of the model and the
 constraints (if any) applied to its parameters. Recognized schemes
-currently implemented in \code{rcaiman}: \code{"simple"} and \code{"free_form"}. This argument is intended for use with
+currently implemented in \pkg{rcaiman}: \code{"simple"} and \code{"free_form"}. This argument is intended for use with
 \code{type = "vignetting_correction"}.}
 
 \item{model_type}{character vector of length one. Model type used to develop a
 radiometric correction. Only \code{"polynomial"} is currently implemented in
-\code{rcaiman}. This argument is intended for use with
+\pkg{rcaiman}. This argument is intended for use with
 \code{type = "vignetting_correction"}.}
 
 \item{parameters}{named list of model parameters. Model parameters defining
@@ -56,8 +57,7 @@ ordered set of color filter elements used by the sensor. This argument must
 be provided when \code{type = "interpretive_constraint"}. Values should
 correspond to semantic color labels (e.g. \code{"Red"}, \code{"Green"}, \code{"Blue"},
 \code{"Yellow"}, \code{"Cyan"}, \code{"Magenta"}), and reflect the CFA pattern as produced
-by the sensor. These declarations may intentionally override or contradict
-embedded metadata when such metadata is known to be incorrect.}
+by the sensor.}
 
 \item{spectral_mapping}{optional named list. Declares how target spectral
 bands should be derived from sensor channels. This argument is intended for
@@ -69,6 +69,9 @@ formal arguments of each function define the source bands to be used and
 must match names in \code{cfa_pattern}. Functions must accept
 \code{\link[terra:SpatRaster-class]{terra::SpatRaster}} objects as input and return a single-layer
 \code{\link[terra:SpatRaster-class]{terra::SpatRaster}}.}
+
+\item{offset_value}{optional named list of black levels. List names must be coercible
+to numeric values representing ISO sensitivity.}
 
 \item{date}{optional \code{\link{Date}} object. Date when the specification was added
 to the registry. If \code{NULL}, the current system date is used automatically.}
@@ -114,7 +117,7 @@ The behavior and required arguments depend on the value of \code{type}.
 
 When \code{type = "vignetting_correction"}, the specification defines a parametric
 radiometric model. Arguments \code{scheme} and \code{model_type} provide the semantic
-context required by \code{rcaiman} to interpret \code{parameters} and apply the
+context required by \pkg{rcaiman} to interpret \code{parameters} and apply the
 corresponding correction. The effective mathematical model applied to images
 is defined by \code{\link[rcaiman:correct_vignetting]{rcaiman::correct_vignetting()}}. Interpretative constraints
 are ignored.
@@ -147,7 +150,7 @@ foo <- add_geometry_spec(
   id = "simple_method",
   lens_coef = signif(c(1306,24.8,-56.2)/1894,3),
   zenith_colrow = c(1500, 997),
-  horizon_radius = 947,
+  horizon_radius = 946,
   is_horizon_circle_clipped = FALSE,
   max_zenith_angle = 92.8,
   dim = c(3040, 2014),
@@ -174,8 +177,11 @@ foo <- add_radiometry_spec(
   geometry_id = "simple_method",
   id = "spectral_bands",
   type = "interpretive_constraint",
-  cfa_pattern = matrix(c("Red","Green",
-                         "Green","Blue"), byrow = TRUE, ncol = 2),
+  cfa_pattern = matrix(c("Red","Green1",
+                         "Green2","Blue"), byrow = TRUE, ncol = 2),
+  spectral_mapping = list(Red = function(Red) Red,
+                          Green = function(Green1, Green2) mean(Green1, Green2),
+                          Blue = function(Blue) Blue),
   firmware_version = "1.01",
   contact_information = "gastonmaurodiaz@gmail.com"
 )

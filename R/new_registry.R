@@ -23,14 +23,17 @@
 #'   system within a project, institution, or personal workflow.
 #' @param body optional character vector of length one. Camera body model.
 #' @param body_manufacturer optional character vector of length one.
-#' @param body_serial optional character vector of length one.
+#' @param body_serial optional character vector of length one. Serial number as
+#'   physically printed on the body.
 #' @param device optional character vector of length one. Image acquisition
 #'   device used with an auxiliary lens (e.g. smartphone model).
 #' @param device_manufacturer optional character vector of length one.
-#' @param device_serial optional character vector of length one.
+#' @param device_serial optional character vector of length one. Serial number as
+#'   physically printed on the device.
 #' @param lens optional character vector of length one. Primary lens model.
 #' @param lens_manufacturer optional character vector of length one.
-#' @param lens_serial optional character vector of length one.
+#' @param lens_serial optional character vector of length one. Serial number as
+#'   physically printed on the lens.
 #' @param auxiliary_lens optional character vector of length one. Auxiliary
 #'   fisheye lens.
 #' @param auxiliary_lens_manufacturer optional character vector of length one.

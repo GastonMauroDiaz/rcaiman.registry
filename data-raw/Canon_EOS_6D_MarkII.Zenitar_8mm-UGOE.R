@@ -28,10 +28,16 @@ Canon_EOS_6D_MarkII.Zenitar_8mm.UGOE <- add_embedded_metadata_identity(
   id = "exif_01",
   namespace = "exif",
   rules = list(
+    "Exif Version" = "0230",
     "Camera Model Name" = "Canon EOS 6D Mark II",
     "Serial Number" = "473053001563",
     "Canon Firmware Version" = "Firmware Version 1.1.1",
-    "CR2 CFA Pattern" = "[Red,Green][Green,Blue]"
+    "CR2 CFA Pattern" = "[Red,Green][Green,Blue]",
+    "Highlight Tone Priority" = "Off",
+    "Peripheral Illumination Corr" =  "Off",
+    "Dual Pixel Raw"  = "Off",
+    "Auto Lighting Optimizer" = "off",
+    "Quality" = "RAW"
   ),
   firmware_version = "1.1.1",
   notes = "Produced with ExifTool Version Number 12.92",
@@ -74,8 +80,15 @@ Canon_EOS_6D_MarkII.Zenitar_8mm.UGOE <- add_radiometry_spec(
   cfa_pattern = matrix(c("Red","Green1",
                          "Green2", "Blue"), byrow = TRUE, ncol = 2),
   spectral_mapping = list(Red = function(Red) Red,
-                          Green = function(Green1, Green2) (Green1+Green2)/2,
+                          Green = function(Green1, Green2) mean(Green1, Green2),
                           Blue = function(Blue) Blue),
+  offset_value = list("100" = 512,
+                      "200" = 512,
+                      "800" = 2048,
+                      "2000" = 2048,
+                      "2500" = 2048,
+                      "8000" = 2048,
+                      "16000" = 2048),
   contact_information = "gastonmaurodiaz@gmail.com"
 )
 

@@ -29,7 +29,13 @@ Nikon_D610.Nikkor_8mm.CIEFAP <- add_embedded_metadata_identity(
     "Serial Number" = "9023728",
     "Lens" = "8-15mm f/3.5-4.5",
     "Firmware Version" = "1.01",
-    "CFA Pattern" = "[Red,Green][Green,Blue]"
+    "CFA Pattern" = "[Red,Green][Green,Blue]",
+    "Bits Per Sample" = "14",
+    "NEF Compression" = "Lossless",
+    "Active D-Lighting" = "Off",
+    "High ISO Noise Reduction" = "Off",
+    "Vignette Control" = "Off",
+    "Auto Distortion Control" = "Off"
   ),
   firmware_version = "1.01",
   notes = "Produced with ExifTool Version Number 12.92",
@@ -41,7 +47,7 @@ Nikon_D610.Nikkor_8mm.CIEFAP <- add_geometry_spec(
   id = "simple_method",
   lens_coef = signif(c(1306,24.8,-56.2)/1894,3),
   zenith_colrow = c(1500, 997),
-  horizon_radius = 947,
+  horizon_radius = 946,
   is_horizon_circle_clipped = FALSE,
   max_zenith_angle = 92.8,
   dim = c(3040, 2014),
@@ -58,8 +64,9 @@ Nikon_D610.Nikkor_8mm.CIEFAP <- add_radiometry_spec(
   cfa_pattern = matrix(c("Red", "Green1",
                          "Green2", "Blue"), byrow = TRUE, ncol = 2),
   spectral_mapping = list(Red = function(Red) Red,
-                          Green = function(Green1, Green2) (Green1+Green2)/2,
+                          Green = function(Green1, Green2) mean(Green1, Green2),
                           Blue = function(Blue) Blue),
+  offset_value = list("100" = 0),
   firmware_version = "1.01",
   contact_information = "gastonmaurodiaz@gmail.com"
 )

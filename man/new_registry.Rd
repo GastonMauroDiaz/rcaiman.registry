@@ -29,20 +29,23 @@ system within a project, institution, or personal workflow.}
 
 \item{body_manufacturer}{optional character vector of length one.}
 
-\item{body_serial}{optional character vector of length one.}
+\item{body_serial}{optional character vector of length one. Serial number as
+physically printed on the body.}
 
 \item{device}{optional character vector of length one. Image acquisition
 device used with an auxiliary lens (e.g. smartphone model).}
 
 \item{device_manufacturer}{optional character vector of length one.}
 
-\item{device_serial}{optional character vector of length one.}
+\item{device_serial}{optional character vector of length one. Serial number as
+physically printed on the device.}
 
 \item{lens}{optional character vector of length one. Primary lens model.}
 
 \item{lens_manufacturer}{optional character vector of length one.}
 
-\item{lens_serial}{optional character vector of length one.}
+\item{lens_serial}{optional character vector of length one. Serial number as
+physically printed on the lens.}
 
 \item{auxiliary_lens}{optional character vector of length one. Auxiliary
 fisheye lens.}

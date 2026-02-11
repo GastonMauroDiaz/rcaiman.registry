@@ -37,12 +37,12 @@ procedures following the same conventions. The coefficients must pass
 
 \item{zenith_colrow}{numeric vector of length 2. Column and row coordinates
 of the optical center (zenith) in pixel units following the conventions
-used in \code{rcaiman}.}
+used in \pkg{rcaiman}.}
 
 \item{horizon_radius}{integer-like numeric vector of length one. Radius of the
 hemispherical image in pixel units, measured from the optical center
 (\code{zenith_colrow}) to the image location corresponding to a zenith angle of
-90 deg (i.e. the horizon), and following the conventions used in \code{rcaiman}
+90 deg (i.e. the horizon), and following the conventions used in \pkg{rcaiman}
 (i.e., \code{2 * horizon_radius} must be an even integer, see
 \link[rcaiman:zenith_image]{rcaiman::zenith_image}).}
 
@@ -97,7 +97,7 @@ foo <- add_geometry_spec(
   id = "simple_method",
   lens_coef = signif(c(1306,24.8,-56.2)/1894,3),
   zenith_colrow = c(1500, 997),
-  horizon_radius = 947,
+  horizon_radius = 946,
   is_horizon_circle_clipped = FALSE,
   max_zenith_angle = 92.8,
   dim = c(3040, 2014),

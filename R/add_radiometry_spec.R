@@ -25,7 +25,7 @@
 #'
 #' When `type = "vignetting_correction"`, the specification defines a parametric
 #' radiometric model. Arguments `scheme` and `model_type` provide the semantic
-#' context required by `rcaiman` to interpret `parameters` and apply the
+#' context required by \pkg{rcaiman} to interpret `parameters` and apply the
 #' corresponding correction. The effective mathematical model applied to images
 #' is defined by [rcaiman::correct_vignetting()]. Interpretative constraints
 #' are ignored.
@@ -54,11 +54,11 @@
 #'   the modeling assumptions used by the core for radiometric correction.
 #'   The selected scheme determines the effective form of the model and the
 #'   constraints (if any) applied to its parameters. Recognized schemes
-#'   currently implemented in `rcaiman`: `"simple"` and `"free_form"`. This argument is intended for use with
+#'   currently implemented in \pkg{rcaiman}: `"simple"` and `"free_form"`. This argument is intended for use with
 #'   `type = "vignetting_correction"`.
 #' @param model_type character vector of length one. Model type used to develop a
 #'   radiometric correction. Only `"polynomial"` is currently implemented in
-#'   `rcaiman`. This argument is intended for use with
+#'   \pkg{rcaiman}. This argument is intended for use with
 #'   `type = "vignetting_correction"`.
 #' @param parameters named list of model parameters. Model parameters defining
 #'   the radiometric correction, following the conventions of the selected
@@ -70,8 +70,7 @@
 #'   be provided when `type = "interpretive_constraint"`. Values should
 #'   correspond to semantic color labels (e.g. `"Red"`, `"Green"`, `"Blue"`,
 #'   `"Yellow"`, `"Cyan"`, `"Magenta"`), and reflect the CFA pattern as produced
-#'   by the sensor. These declarations may intentionally override or contradict
-#'   embedded metadata when such metadata is known to be incorrect.
+#'   by the sensor.
 #' @param spectral_mapping optional named list. Declares how target spectral
 #'   bands should be derived from sensor channels. This argument is intended for
 #'   use with `type = "interpretive_constraint"`. Each element of the list must
@@ -82,6 +81,8 @@
 #'   must match names in `cfa_pattern`. Functions must accept
 #'   [`terra::SpatRaster`] objects as input and return a single-layer
 #'   [`terra::SpatRaster`].
+#' @param offset_value optional named list of black levels. List names must be coercible
+#'   to numeric values representing ISO sensitivity.
 #'
 #' @inheritParams add_geometry_spec
 #'
@@ -108,7 +109,7 @@
 #'   id = "simple_method",
 #'   lens_coef = signif(c(1306,24.8,-56.2)/1894,3),
 #'   zenith_colrow = c(1500, 997),
-#'   horizon_radius = 947,
+#'   horizon_radius = 946,
 #'   is_horizon_circle_clipped = FALSE,
 #'   max_zenith_angle = 92.8,
 #'   dim = c(3040, 2014),
@@ -135,8 +136,11 @@
 #'   geometry_id = "simple_method",
 #'   id = "spectral_bands",
 #'   type = "interpretive_constraint",
-#'   cfa_pattern = matrix(c("Red","Green",
-#'                          "Green","Blue"), byrow = TRUE, ncol = 2),
+#'   cfa_pattern = matrix(c("Red","Green1",
+#'                          "Green2","Blue"), byrow = TRUE, ncol = 2),
+#'   spectral_mapping = list(Red = function(Red) Red,
+#'                           Green = function(Green1, Green2) mean(Green1, Green2),
+#'                           Blue = function(Blue) Blue),
 #'   firmware_version = "1.01",
 #'   contact_information = "gastonmaurodiaz@gmail.com"
 #' )
@@ -150,6 +154,7 @@ add_radiometry_spec <- function(
     parameters = NULL,
     cfa_pattern = NULL,
     spectral_mapping = NULL,
+    offset_value = NULL,
     date = NULL,
     firmware_version = NULL,
     notes = NULL,
@@ -196,36 +201,71 @@ add_radiometry_spec <- function(
 
   if (type == "vignetting_correction") {
     .check_vector(scheme, "character", 1)
-    .assert_choice(scheme, c("simple", "free-form"))
-    .check_vector(model_type, "character", 1)
-    .assert_choice(model_type, "polynomial")
-    if (!is.list(parameters)) {
-      stop("`parameters` must be a list.")
-    }
-    nms <- names(parameters)
-    if (is.null(nms) || any(nms == "")) {
-      stop("`parameters` must be a named list with names representing aperture values.")
-    }
-    aperture_num <- suppressWarnings(as.numeric(nms))
-    if (any(is.na(aperture_num))) {
-      stop("All `parameters` names must be coercible to numeric aperture values (f-numbers).")
-    }
-    if (any(!is.finite(aperture_num)) || any(aperture_num <= 0)) {
-      stop("Aperture values in `parameters` must be positive and finite.")
-    }
-    if (any(duplicated(aperture_num))) {
-      stop("Duplicated aperture values detected in `parameters`.")
-    }
-    ok <- vapply(
-      parameters,
-      function(x) is.numeric(x) && length(x) >= 1,
-      logical(1)
-    )
-    if (!all(ok)) {
-      stop("Each element of `parameters` must be a numeric vector of length >= 1.")
+    .assert_choice(scheme, c("simple", "free-form", "legacy"))
+    if (scheme != "legacy") {
+      .check_vector(model_type, "character", 1)
+      .assert_choice(model_type, "polynomial")
+      if (!is.list(parameters)) {
+        stop("`parameters` must be a list.")
+      }
+      nms <- names(parameters)
+      if (is.null(nms) || any(nms == "")) {
+        stop("`parameters` must be a named list with names representing aperture values.")
+      }
+      aperture_num <- suppressWarnings(as.numeric(nms))
+      if (any(is.na(aperture_num))) {
+        stop("All `parameters` names must be coercible to numeric aperture values (f-numbers).")
+      }
+      if (any(!is.finite(aperture_num)) || any(aperture_num <= 0)) {
+        stop("Aperture values in `parameters` must be positive and finite.")
+      }
+      if (any(duplicated(aperture_num))) {
+        stop("Duplicated aperture values detected in `parameters`.")
+      }
+      ok <- vapply(
+        parameters,
+        function(x) is.numeric(x) && length(x) >= 1,
+        logical(1)
+      )
+      if (!all(ok)) {
+        stop("Each element of `parameters` must be a numeric vector of length >= 1.")
+      }
+    } else {
+      if (any(!is.null(model_type), !is.null(parameters))) {
+        stop("`scheme´= 'legacy'`, `model_type` and `parameters` should be `NULL`")
+      }
     }
   }
   if (type == "interpretive_constraint") {
+    if (!is.null(offset_value)) {
+
+      if (!is.list(offset_value)) {
+        stop("`offset_value` must be a list.")
+      }
+      nms <- names(offset_value)
+      if (is.null(nms) || any(nms == "")) {
+        stop("`offset_value` must be a named list with names representing ISO sensitivity values.")
+      }
+      aperture_num <- suppressWarnings(as.numeric(nms))
+      if (any(is.na(aperture_num))) {
+        stop("All `offset_value` names must be coercible to numeric ISO sensitivity values.")
+      }
+      if (any(!is.finite(aperture_num)) || any(aperture_num <= 0)) {
+        stop("ISO sensitivity values in `offset_value` must be positive and finite.")
+      }
+      if (any(duplicated(aperture_num))) {
+        stop("Duplicated ISO sensitivity values detected in `offset_value`.")
+      }
+      ok <- vapply(
+        offset_value,
+        function(x) is.numeric(x) && length(x) == 1,
+        logical(1)
+      )
+      if (!all(ok)) {
+        stop("Each element of `offset_value` must be a numeric vector of length one.")
+      }
+    }
+
     if (is.null(cfa_pattern)) {
       stop(
         "For `type = 'interpretive_constraint'`, `cfa_pattern` must be provided.",
@@ -300,6 +340,7 @@ add_radiometry_spec <- function(
     date = date,
     cfa_pattern = cfa_pattern,
     spectral_mapping = spectral_mapping,
+    offset_value = offset_value,
     firmware_version = firmware_version,
     notes = notes,
     contact_information = contact_information

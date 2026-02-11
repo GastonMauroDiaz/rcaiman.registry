@@ -5,9 +5,7 @@
 \alias{Nikon_Coolpix5700.FCE9.CIEFAP}
 \title{Specs for Nikon Coolpix 5700 with Nikon FC-E9 fisheye converter (CIEFAP)}
 \format{
-An object of class \code{hemispherical_camera_registry} containing
-two geometry specification. Only one of them with an associated radiometry
-specification.
+An object of class \code{hemispherical_camera_registry}.
 }
 \usage{
 Nikon_Coolpix5700.FCE9.CIEFAP
@@ -25,18 +23,18 @@ converter.
 \emph{Figure 1. Photograph of the hemispherical camera system.}
 
 More details about the geometry spec with \code{id = "delta-t jpeg"} can be found
-in the supplementary materials of \insertCite{Diaz2018;textual}{rcaiman}.
+in the supplementary materials of \insertCite{Diaz2018;textual}{rcaiman.registry}.
 It is valid for the JPEGs of maximum resolution produced by the
 camera.
 
 Although both geometry and radiometry specs were obtained following the
-methodology described in \insertCite{Diaz2024;textual}{rcaiman}, the
+methodology described in \insertCite{Diaz2024;textual}{rcaiman.registry}, the
 calibration parameters stored in this object differ from those reported in
 the publication. The calibration parameters were revised in 2025, after
 reverting the decision to replace the horizon radius returned by
 \code{\link[rcaiman:calibrate_lens]{rcaiman::calibrate_lens()}} with the one computed using
 \code{\link[rcaiman:calc_diameter]{rcaiman::calc_diameter()}}. These parameters therefore differ from those
-reported in \insertCite{Diaz2024;textual}{rcaiman}.
+reported in \insertCite{Diaz2024;textual}{rcaiman.registry}.
 }
 \references{
 \insertAllCited{}

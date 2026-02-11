@@ -20,9 +20,10 @@ iPhone6plus.Olloclip <- add_embedded_metadata_identity(
   namespace = "exif",
   rules = list(
     "Camera Model Name" = "iPhone 6s Plus",
-    "Software" = "Adobe Lightroom 7.1.0 (iOS)",
     "Lens ID" = "iPhone 6s Plus back camera 4.15mm f/2.2",
-    "CFA Pattern" = "[Red,Green][Green,Blue]"
+    "CFA Pattern" = "[Red,Green][Green,Blue]",
+    "DNG Version" = "1.3.0.0",
+    "Compression" = "JPEG"
   ),
   notes = "Produced with ExifTool Version Number 12.92",
   contact_information = "gastonmaurodiaz@gmail.com"
@@ -51,6 +52,8 @@ iPhone6plus.Olloclip <- add_radiometry_spec(
   spectral_mapping = list(Red = function(Red) Red,
                           Green = function(Green1, Green2) (Green1+Green2)/2,
                           Blue = function(Blue) Blue),
+  offset_value = list("25" = 528,
+                      "100" = 528),
   contact_information = "gastonmaurodiaz@gmail.com"
 )
 

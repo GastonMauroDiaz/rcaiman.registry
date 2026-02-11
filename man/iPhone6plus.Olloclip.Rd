@@ -5,8 +5,7 @@
 \alias{iPhone6plus.Olloclip}
 \title{Specs for iPhone 6 Plus (rear camera) with Olloclip auxiliary lens}
 \format{
-An object of class \code{hemispherical_camera_registry} containing
-one geometry specification and one associated radiometry specification.
+An object of class \code{hemispherical_camera_registry}.
 }
 \usage{
 iPhone6plus.Olloclip
@@ -24,7 +23,7 @@ Fig. 1 shows the iPhone 6 Plus with the Olloclip auxiliary lens attached to its 
 
 Both geometry and radiometry specs were obtained
 following the methodology described in
-\insertCite{Diaz2024;textual}{rcaiman}. Those calibration parameters were
+\insertCite{Diaz2024;textual}{rcaiman.registry}. Those calibration parameters were
 revised in 2025, when the decision of replacing the horizon radius returned
 by \code{\link[rcaiman:calibrate_lens]{rcaiman::calibrate_lens()}} by the one calculated with
 \code{\link[rcaiman:calc_diameter]{rcaiman::calc_diameter()}} was overturned.

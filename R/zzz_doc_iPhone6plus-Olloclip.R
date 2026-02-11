@@ -5,8 +5,7 @@
 #' Plus (rear camera) with Olloclip fisheye auxiliary lens.
 #'
 #' @format
-#' An object of class \code{hemispherical_camera_registry} containing
-#' one geometry specification and one associated radiometry specification.
+#' An object of class \code{hemispherical_camera_registry}.
 #'
 #' @details
 #' Fig. 1 shows the iPhone 6 Plus with the Olloclip auxiliary lens attached to its rear camera.
@@ -17,7 +16,7 @@
 #'
 #' Both geometry and radiometry specs were obtained
 #' following the methodology described in
-#' \insertCite{Diaz2024;textual}{rcaiman}. Those calibration parameters were
+#' \insertCite{Diaz2024;textual}{rcaiman.registry}. Those calibration parameters were
 #' revised in 2025, when the decision of replacing the horizon radius returned
 #' by [rcaiman::calibrate_lens()] by the one calculated with
 #' [rcaiman::calc_diameter()] was overturned.

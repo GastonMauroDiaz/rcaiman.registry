@@ -33,7 +33,10 @@ Nikon_Coolpix5700.FCE9.CIEFAP <- add_embedded_metadata_identity(
   rules = list(
     "Camera Model Name" = "E5700",
     "Software" = "E5700v1.1",
-    "CFA Pattern" = "[Yellow,Cyan][Green,Magenta]"
+    "CFA Pattern" = "[Yellow,Cyan][Green,Magenta]",
+    "Compression" = "Uncompressed",
+    "Bits Per Sample" = 12,
+    "Quality" = "RAW"
   ),
   notes = "Produced with ExifTool Version Number 12.92",
   contact_information = "gastonmaurodiaz@gmail.com"
@@ -70,11 +73,12 @@ Nikon_Coolpix5700.FCE9.CIEFAP <- add_radiometry_spec(
   geometry_id = "simple_method",
   id = "spectral_bands",
   type = "interpretive_constraint",
-  cfa_pattern = matrix(c("Yellow", "Cyan",
-                         "Green", "Magenta"), byrow = TRUE, ncol = 2),
-  spectral_mapping = list(Red = function(Yellow, Magenta) (Yellow+Magenta)/2,
+  cfa_pattern = matrix(c("Green", "Yellow",
+                         "Magenta", "Cyan"), byrow = TRUE, ncol = 2),
+  spectral_mapping = list(Red = function(Yellow, Magenta) mean(Yellow, Magenta),
                           Green = function(Green) Green,
                           Blue = function(Cyan) Cyan),
+  offset_value = list("100" = 0),
   firmware_version = "1.01",
   contact_information = "gastonmaurodiaz@gmail.com"
 )
