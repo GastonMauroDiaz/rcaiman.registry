@@ -5,28 +5,31 @@
 \title{Add a radiometry spec to an existing geometry spec}
 \usage{
 add_radiometry_spec(
-  registry,
-  geometry_id,
+  registry_entry,
+  embedded_metadata_sig,
+  geometry_spec,
   id,
   type,
-  scheme = NULL,
-  model_type = NULL,
+  model = NULL,
+  rcaiman_version = NULL,
   parameters = NULL,
+  data = NULL,
   cfa_pattern = NULL,
   spectral_mapping = NULL,
   offset_value = NULL,
   date = NULL,
-  firmware_version = NULL,
   notes = NULL,
   contact_information = NULL
 )
 }
 \arguments{
-\item{registry}{\code{hemispherical_camera_registry} object created with
-\code{\link[=new_registry]{new_registry()}} and containing the geometry specification identified by
-\code{geometry_id}.}
+\item{registry_entry}{\link{hs_registry_entry} object created with
+\code{\link[=new_registry_entry]{new_registry_entry()}}.}
 
-\item{geometry_id}{character vector of length one. Identifier of the geometry
+\item{embedded_metadata_sig}{character vector of length one. Identifier of
+embedded metadata signature to which the geometry spec will be attached.}
+
+\item{geometry_spec}{character vector of length one. Identifier of the geometry
 specification to which the radiometry spec will be attached.}
 
 \item{id}{character vector of length one. Identifier of the radiometry spec.
@@ -34,23 +37,48 @@ Must use snake_case (lowercase letters, numbers, and underscores only)}
 
 \item{type}{character vector of length one. See \emph{Details}.}
 
-\item{scheme}{character vector of length one. Calibration scheme defining
-the modeling assumptions used by the core for radiometric correction.
-The selected scheme determines the effective form of the model and the
-constraints (if any) applied to its parameters. Recognized schemes
-currently implemented in \pkg{rcaiman}: \code{"simple"} and \code{"free_form"}. This argument is intended for use with
-\code{type = "vignetting_correction"}.}
+\item{model}{character vector of length one. Identifier of a flat-field model
+implemented in \pkg{rcaiman} package as a public function. Required when
+\code{type = "flat_field_correction"}. The value should match the name of a
+function. A flat-field model function that:
+\itemize{
+\item Has a first argument representing the primary input raster,
+which must be a single-layer \link[terra:SpatRaster-class]{terra::SpatRaster}.
+\item May declare an argument named \code{parameters} used to receive model
+parameters.
+\item Returns a single-layer \link[terra:SpatRaster-class]{terra::SpatRaster}.
+\item Preserves raster geometry (extent, resolution, dimensions,
+and CRS) with respect to the first raster argument.
+\item Produces strictly positive or \code{NA} values and is therefore
+interoperable with \code{\link[rcaiman:apply_flat_field]{rcaiman::apply_flat_field()}}.
+}}
 
-\item{model_type}{character vector of length one. Model type used to develop a
-radiometric correction. Only \code{"polynomial"} is currently implemented in
-\pkg{rcaiman}. This argument is intended for use with
-\code{type = "vignetting_correction"}.}
+\item{rcaiman_version}{character vector of length one. Version of the
+\pkg{rcaiman} package used when the specification was created. If \code{NULL},
+the current installed version of \pkg{rcaiman} is recorded.}
 
-\item{parameters}{named list of model parameters. Model parameters defining
-the radiometric correction, following the conventions of the selected
-\code{model_type}. List names must be coercible to numeric values representing
-f-numbers. This argument is intended for use with
-\code{type = "vignetting_correction"}.}
+\item{parameters}{optional named list of model parameters. Parameters for
+\code{model}. List names must be coercible to numeric values
+representing f-numbers (provide \code{"0"} to indicates that is applicable to
+any f-number). This argument is intended for use with
+\code{type = "flat_field_correction"}.}
+
+\item{data}{optional list. Dense flat-field data apt to build a flat-field
+image. Intended for use with \code{type = "flat_field_correction"}. The expected
+structure is:
+\itemize{
+\item \code{angles}: data frame with numeric columns \code{zenith} and
+\code{azimuth} (in degrees), describing the angular sampling positions.
+\item \code{relative_radiance}: named list of data frames. Each name must represent
+a positive numeric aperture value (f-number). Each data frame must
+contain at least one numeric column with the same number
+of rows as \code{angles}.
+}
+Angular values must be finite. Radiance values must be finite and
+non-negative. This structure is intended for models that reconstruct the
+flat-field surface from dense and well-distributed sampling points covering
+the field of view. When \code{data} is supplied, \code{model} must be
+\code{"flat_field_trend_surface"} and \code{parameters} must be \code{NULL}.}
 
 \item{cfa_pattern}{character matrix of two rows by two columns. Declares the
 ordered set of color filter elements used by the sensor. This argument must
@@ -63,23 +91,17 @@ by the sensor.}
 bands should be derived from sensor channels. This argument is intended for
 use with \code{type = "interpretive_constraint"}. Each element of the list must
 be named according to the target band (e.g. \code{"Red"}, \code{"Green"}, \code{"Blue"}).
-The corresponding value must be a function describing how that band is
-obtained from one or more spectral bands as declared in \code{cfa_pattern}. The
-formal arguments of each function define the source bands to be used and
-must match names in \code{cfa_pattern}. Functions must accept
-\code{\link[terra:SpatRaster-class]{terra::SpatRaster}} objects as input and return a single-layer
-\code{\link[terra:SpatRaster-class]{terra::SpatRaster}}.}
+The corresponding value must be a character scalar containing an algebraic
+expression that defines how the target band is computed from the sensor
+channels declared in \code{cfa_pattern}. Symbols used in the expression must
+match channel labels in \code{cfa_pattern}. Only numeric constants and the
+operators \code{+}, \code{-}, \code{*}, \code{/}, and parentheses are allowed.}
 
 \item{offset_value}{optional named list of black levels. List names must be coercible
 to numeric values representing ISO sensitivity.}
 
 \item{date}{optional \code{\link{Date}} object. Date when the specification was added
 to the registry. If \code{NULL}, the current system date is used automatically.}
-
-\item{firmware_version}{optional character vector of length one.
-Firmware version of the image acquisition system at the time the
-calibration images were acquired. This information is stored for
-documentation and traceability purposes.}
 
 \item{notes}{optional character vector of length one. Free-form notes
 providing context, scope, assumptions, or references relevant to this
@@ -89,100 +111,142 @@ specification (e.g. publications).}
 information for the specification maintainer or responsible person.}
 }
 \value{
-A \code{hemispherical_camera_registry} object with the radiometry specification
-appended to the selected geometry specification.
+A \link{hs_registry_entry} object with the \link{radiometry_spec} appended to the selected \link{geometry_spec}.
 }
 \description{
-Add a radiometry specification to an existing geometry
-specification in a hemispherical camera registry.
+Add a \link{radiometry_spec} to a \link{hs_registry_entry} object.
 }
 \details{
-A radiometry specification describes how pixel values produced by an
-acquisition system should be interpreted or corrected from a radiometric
-point of view.
-
-Radiometry specifications are always associated with a geometry
-specification, and may serve two conceptually distinct purposes:
-
-\itemize{
-\item to define a quantitative radiometric correction model (e.g. vignetting),
-\item to declare interpretive constraints required to correctly understand
-the spectral meaning of the recorded bands or operational conventions
-imposed by downstream processing requirements, even when they do not
-correspond to a physically accurate spectral interpretation, such as when cyan
-is assigned to blue.
-}
-
 The behavior and required arguments depend on the value of \code{type}.
 
-When \code{type = "vignetting_correction"}, the specification defines a parametric
-radiometric model. Arguments \code{scheme} and \code{model_type} provide the semantic
-context required by \pkg{rcaiman} to interpret \code{parameters} and apply the
-corresponding correction. The effective mathematical model applied to images
-is defined by \code{\link[rcaiman:correct_vignetting]{rcaiman::correct_vignetting()}}. Interpretative constraints
-are ignored.
+When \code{type = "flat_field_correction"}, the specification must include a valid
+\code{model} identifier and associated \code{parameters} or flat-field \code{data}. The
+model is implemented in \pkg{rcaiman} as a function and can be resolved at
+runtime based on its name. Package version is stored for traceability and
+reproducibility purposes.
 
 When \code{type = "interpretive_constraint"}, the specification declares
 constraints or conventions that affect how sensor data must be interpreted.
 At least one or these arguments must be provided: \code{cfa_pattern} and
 \code{spectral_mapping}. Modeling-related arguments are ignored.
 }
-\note{
-This function is declarative. It does not apply corrections or enforce
-interpretations. Its role is to register expert knowledge about the
-acquisition system in a form that can be inspected, audited, and
-explicitly used by downstream processing code.
-}
 \examples{
-foo <- new_registry(
-  "Nikon_D610.Nikkor_8mm.CIEFAP",
-  body = "D610",
+\dontrun{
+foo <- new_registry_entry(
+  "Nikon_Coolpix5700.FCE9.CIEFAP",
+  body = "E5700",
   body_manufacturer = "NIKON CORP",
-  body_serial = "9023728",
-  lens = "AF-S FISHEYE NIKKOR 8-15mm 1:3.5-4.5E ED",
+  body_serial = "7053067",
+  lens = "Zoom Nikkor ED 8.9-71.2mm 1:2.8-4.2",
   lens_manufacturer = "NIKON CORP",
-  lens_serial = "210020",
+  auxiliary_lens = "Fisheye Converter FC-E9 0.2x",
+  auxiliary_lens_manufacturer = "NIKON CORP",
   institution = "CIEFAP"
+)
+
+foo <- add_file_sig(
+  foo,
+  id = "raw",
+  extension = "NEF",
+  filename_pattern = "^DSCN[0-9]{4}$"
+)
+
+foo <- add_embedded_metadata_sig(
+  foo,
+  id = "exif_01",
+  namespace = "exif",
+  dim = c(1288, 962),
+  rules = list(
+    "Camera Model Name" = "E5700",
+    "Software" = "E5700v1.1",
+    "CFA Pattern" = "[Yellow,Cyan][Green,Magenta]",
+    "Compression" = "Uncompressed",
+    "Bits Per Sample" = "12",
+    "Quality" = "RAW"
+  ),
+  file_sig = "raw"
 )
 
 foo <- add_geometry_spec(
   foo,
+  embedded_metadata_sig = "exif_01",
   id = "simple_method",
-  lens_coef = signif(c(1306,24.8,-56.2)/1894,3),
-  zenith_colrow = c(1500, 997),
-  horizon_radius = 946,
+  model = "radial_projection",
+  parameters = c(0.6380,  0.0307, -0.0200),
+  zenith_col_row = c(645, 494),
+  horizon_radius = 378,
   is_horizon_circle_clipped = FALSE,
-  max_zenith_angle = 92.8,
-  dim = c(3040, 2014),
-  firmware_version = "1.01",
+  max_zenith_angle = 94.8,
   notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
   contact_information = "gastonmaurodiaz@gmail.com"
 )
 
 foo <- add_radiometry_spec(
   foo,
-  geometry_id = "simple_method",
-  id = "simple_method",
-  type = "vignetting_correction",
-  scheme = "simple",
-  model_type = "polynomial",
-  parameters = list("3.5" = c(0.0302, 0.320, 0.0908)),
-  firmware_version = "1.01",
-  notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
-  contact_information = "gastonmaurodiaz@gmail.com"
-)
-
-foo <- add_radiometry_spec(
-  foo,
-  geometry_id = "simple_method",
+  embedded_metadata_sig = "exif_01",
+  geometry_spec = "simple_method",
   id = "spectral_bands",
   type = "interpretive_constraint",
-  cfa_pattern = matrix(c("Red","Green1",
-                         "Green2","Blue"), byrow = TRUE, ncol = 2),
-  spectral_mapping = list(Red = function(Red) Red,
-                          Green = function(Green1, Green2) mean(Green1, Green2),
-                          Blue = function(Blue) Blue),
-  firmware_version = "1.01",
+  cfa_pattern = matrix(c("Green", "Yellow",
+                         "Magenta", "Cyan"), byrow = TRUE, ncol = 2),
+  spectral_mapping = list(Red = "(Yellow + Magenta)/2",
+                          Green = "Green",
+                          Blue = "Cyan"),
+  offset_value = list("100" = 0),
   contact_information = "gastonmaurodiaz@gmail.com"
 )
+
+foo <- add_radiometry_spec(
+  foo,
+  embedded_metadata_sig = "exif_01",
+  geometry_spec = "simple_method",
+  id = "simple_method",
+  type = "flat_field_correction",
+  model = "flat_field_simple_polynomial",
+  parameters = list("5.0" = c(0.0638, -0.101)),
+  notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
+  contact_information = "gastonmaurodiaz@gmail.com"
+)
+
+
+# Generate the data argument ----------------------------------------------
+
+spec <- get_geometry_spec(foo,
+                          "exif_01", "simple_method")
+z <- zenith_image(spec$horizon_radius*2, spec$parameters)
+a <- azimuth_image(z)
+files <- system.file("external/flat_field_image.tif", package = "rcaiman.registry")
+sampling_points <- fibonacci_points(z, a, 10)
+fnumber <- c(5)
+radiance <- list()
+for (i in seq_along(files)) {
+  r <- read_caim(files[i])
+  sp <- lapply(1:4, function(i) extract_rr(r[[i]], z, a, sampling_points)$sky_points)
+  df <- lapply(sp, function(x) x[,"rr"]) \%>\% data.frame()
+  names(df) <- names(r)
+  radiance[[i]] <- df
+}
+names(radiance) <- fnumber
+angles <- sp[[1]][, c("z", "a")]
+names(angles) <- c("zenith", "azimuth")
+data <- list(angles, radiance)
+names(data) <- c("angles", "relative_radiance")
+
+# -------------------------------------------------------------------------
+
+foo <- add_radiometry_spec(
+  foo,
+  embedded_metadata_sig = "exif_01",
+  geometry_spec = "simple_method",
+  id = "flat_field_generation",
+  type = "flat_field_correction",
+  model = "flat_field_trend_surface",
+  data = data,
+  notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
+  contact_information = "gastonmaurodiaz@gmail.com"
+)
+
+foo
+summary(foo)
+}
 }

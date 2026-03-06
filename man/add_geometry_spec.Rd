@@ -2,52 +2,55 @@
 % Please edit documentation in R/add_geometry_spec.R
 \name{add_geometry_spec}
 \alias{add_geometry_spec}
-\title{Add a geometry spec to an existing registry}
+\title{Add a geometry spec to an existing registry entry}
 \usage{
 add_geometry_spec(
-  registry,
+  registry_entry,
+  embedded_metadata_sig,
   id,
-  date = NULL,
-  lens_coef,
-  zenith_colrow,
+  model,
+  parameters,
+  zenith_col_row,
   horizon_radius,
   is_horizon_circle_clipped,
   max_zenith_angle = NULL,
-  dim = NULL,
-  firmware_version = NULL,
+  date = NULL,
   notes = NULL,
   contact_information = NULL
 )
 }
 \arguments{
-\item{registry}{\code{hemispherical_camera_registry} object created with
-\code{\link[=new_registry]{new_registry()}}.}
+\item{registry_entry}{\link{hs_registry_entry} object created with
+\code{\link[=new_registry_entry]{new_registry_entry()}}.}
+
+\item{embedded_metadata_sig}{character vector of length one. Identifier of
+embedded metadata signature to which the geometry spec will be attached.}
 
 \item{id}{character vector of length one. Identifier of the geometry spec.
 Must use snake_case (lowercase letters, numbers, and underscores only)}
 
-\item{date}{optional \code{\link{Date}} object. Date when the specification was added
-to the registry. If \code{NULL}, the current system date is used automatically.}
+\item{model}{character vector of length one. Declare \code{"radial_projection"} as
+the model implemented in \pkg{rcaiman}.}
 
-\item{lens_coef}{numeric vector. Lens projection coefficients describing the
+\item{parameters}{numeric vector. Lens projection coefficients describing the
 relationship between image radius and zenith angle. These coefficients
-typically originate from \code{\link[rcaiman:calibrate_lens]{rcaiman::calibrate_lens()}} or compatible
+typically originate from \code{\link[=calibrate_lens]{calibrate_lens()}} or compatible
 procedures following the same conventions. The coefficients must pass
-\code{\link[rcaiman:test_lens_coef]{rcaiman::test_lens_coef()}}.}
+\code{\link[rcaiman:validate_radial_projection_function]{rcaiman::validate_radial_projection_function()}}.}
 
-\item{zenith_colrow}{numeric vector of length 2. Column and row coordinates
+\item{zenith_col_row}{numeric vector of length 2. Column and row coordinates
 of the optical center (zenith) in pixel units following the conventions
 used in \pkg{rcaiman}.}
 
 \item{horizon_radius}{integer-like numeric vector of length one. Radius of the
 hemispherical image in pixel units, measured from the optical center
-(\code{zenith_colrow}) to the image location corresponding to a zenith angle of
+(\code{zenith_col_row}) to the image location corresponding to a zenith angle of
 90 deg (i.e. the horizon), and following the conventions used in \pkg{rcaiman}
 (i.e., \code{2 * horizon_radius} must be an even integer, see
 \link[rcaiman:zenith_image]{rcaiman::zenith_image}).}
 
 \item{is_horizon_circle_clipped}{logical vector of length one. Indicates
-whether the horizon circle (90° zenith angle), obtained via model
+whether the horizon circle (90 deg zenith angle), obtained via model
 extrapolation when necesary, is clipped by the image matrix. If \code{FALSE},
 the geometry specification asserts that the complete horizon circle is
 fully included within the image extent, and this condition may be validated
@@ -57,13 +60,8 @@ validation is performed.}
 \item{max_zenith_angle}{optional numeric vector of length one. Maximum zenith
 angle (deg) that the system is capable of observing.}
 
-\item{dim}{optional integer-like numeric vector of length two. Width and height in
-pixels of the raster from which \code{zenith_colrow} was derived.}
-
-\item{firmware_version}{optional character vector of length one.
-Firmware version of the image acquisition system at the time the
-calibration images were acquired. This information is stored for
-documentation and traceability purposes.}
+\item{date}{optional \code{\link{Date}} object. Date when the specification was added
+to the registry. If \code{NULL}, the current system date is used automatically.}
 
 \item{notes}{optional character vector of length one. Free-form notes
 providing context, scope, assumptions, or references relevant to this
@@ -73,36 +71,62 @@ specification (e.g. publications).}
 information for the specification maintainer or responsible person.}
 }
 \value{
-A \code{hemispherical_camera_registry} object with the geometry specification
-appended.
+A \link{hs_registry_entry} object with the \link{geometry_spec} object
+appended the selected \link{embedded_metadata_sig}.
 }
 \description{
-Add a geometry specification to an existing hemispherical
-camera registry.
+Add a \link{geometry_spec} to a \link{hs_registry_entry} object.
 }
 \examples{
-foo <- new_registry(
-  "Nikon_D610.Nikkor_8mm.CIEFAP",
-  body = "D610",
+foo <- new_registry_entry(
+  "Nikon_Coolpix5700.FCE9.CIEFAP",
+  body = "E5700",
   body_manufacturer = "NIKON CORP",
-  body_serial = "9023728",
-  lens = "AF-S FISHEYE NIKKOR 8-15mm 1:3.5-4.5E ED",
+  body_serial = "7053067",
+  lens = "Zoom Nikkor ED 8.9-71.2mm 1:2.8-4.2",
   lens_manufacturer = "NIKON CORP",
-  lens_serial = "210020",
+  auxiliary_lens = "Fisheye Converter FC-E9 0.2x",
+  auxiliary_lens_manufacturer = "NIKON CORP",
   institution = "CIEFAP"
+)
+
+foo <- add_file_sig(
+  foo,
+  id = "raw",
+  extension = "NEF",
+  filename_pattern = "^DSCN[0-9]{4}$"
+)
+
+foo <- add_embedded_metadata_sig(
+  foo,
+  id = "exif_01",
+  namespace = "exif",
+  dim = c(1288, 962),
+  rules = list(
+    "Camera Model Name" = "E5700",
+    "Software" = "E5700v1.1",
+    "CFA Pattern" = "[Yellow,Cyan][Green,Magenta]",
+    "Compression" = "Uncompressed",
+    "Bits Per Sample" = "12",
+    "Quality" = "RAW"
+  ),
+  file_sig = "raw"
 )
 
 foo <- add_geometry_spec(
   foo,
+  embedded_metadata_sig = "exif_01",
   id = "simple_method",
-  lens_coef = signif(c(1306,24.8,-56.2)/1894,3),
-  zenith_colrow = c(1500, 997),
-  horizon_radius = 946,
+  model = "radial_projection",
+  parameters = c(0.6380,  0.0307, -0.0200),
+  zenith_col_row = c(645, 494),
+  horizon_radius = 378,
   is_horizon_circle_clipped = FALSE,
-  max_zenith_angle = 92.8,
-  dim = c(3040, 2014),
-  firmware_version = "1.01",
+  max_zenith_angle = 94.8,
   notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
   contact_information = "gastonmaurodiaz@gmail.com"
 )
+
+foo
+summary(foo)
 }

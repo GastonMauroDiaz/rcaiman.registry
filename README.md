@@ -11,7 +11,16 @@ experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](h
 status](https://www.r-pkg.org/badges/version/rcaiman.registry)](https://CRAN.R-project.org/package=rcaiman.registry)
 <!-- badges: end -->
 
-The goal of rcaiman.registry is to …
+`rcaiman.registry` provides the infrastructure used by `rcaiman` to
+describe imaging systems used in canopy photography.
+
+The package implements a structured registry where instrument
+characteristics and interpretation rules are declared through
+specifications combined into registry entries.
+
+The package also provides tools to export and read **registry
+snapshots** (YAML files) that capture a portable subset of a registry
+entry.
 
 ## Installation
 
@@ -19,50 +28,216 @@ You can install the development version of rcaiman.registry like so:
 
 ``` r
 # install.packages("devtools")
-devtools::install_github("GastonMauroDiaz/rcaiman")
+devtools::install_github("GastonMauroDiaz/rcaiman.registry")
 ```
 
-## Example
+## Registry entries
 
-This is a basic example which shows you how to solve a common problem:
+A registry entry represents a complete technical description of an
+imaging system. It typically combines:
+
+- an `embedded_metadata_sig` describing how metadata is detected in
+  files
+- a `geometry_spec` defining the directional reference frame of the
+  image
+- a `radiometry_spec` defining how pixel values should be interpreted
+
+## How to create and navigate a registry entry
+
+The package provides helper functions that allow you to build a valid
+registry entry step by step:
 
 ``` r
-library(rcaiman.registry)
-#> Cargando paquete requerido: rcaiman
-#> Cargando paquete requerido: filenamer
-#> Cargando paquete requerido: magrittr
-#> Warning: package 'magrittr' was built under R version 4.5.2
-#> Cargando paquete requerido: terra
-#> Warning: package 'terra' was built under R version 4.5.2
-#> terra 1.8.86
-#> 
-#> Adjuntando el paquete: 'terra'
-#> The following objects are masked from 'package:magrittr':
-#> 
-#>     extract, inset
-## basic example code
+foo <- new_registry_entry(
+  "Nikon_Coolpix5700.FCE9.CIEFAP",
+  body = "E5700",
+  body_manufacturer = "NIKON CORP",
+  body_serial = "7053067",
+  lens = "Zoom Nikkor ED 8.9-71.2mm 1:2.8-4.2",
+  lens_manufacturer = "NIKON CORP",
+  auxiliary_lens = "Fisheye Converter FC-E9 0.2x",
+  auxiliary_lens_manufacturer = "NIKON CORP",
+  institution = "CIEFAP"
+)
+
+foo <- add_file_sig(
+  foo,
+  id = "raw",
+  extension = "NEF",
+  filename_pattern = "^DSCN[0-9]{4}$"
+)
+
+foo <- add_embedded_metadata_sig(
+  foo,
+  id = "exif_01",
+  namespace = "exif",
+  dim = c(1288, 962),
+  rules = list(
+    "Camera Model Name" = "E5700",
+    "Software" = "E5700v1.1",
+    "CFA Pattern" = "[Yellow,Cyan][Green,Magenta]",
+    "Compression" = "Uncompressed",
+    "Bits Per Sample" = "12",
+    "Quality" = "RAW"
+  ),
+  file_sig = "raw"
+)
+
+foo <- add_geometry_spec(
+  foo,
+  embedded_metadata_sig = "exif_01",
+  id = "simple_method",
+  model = "radial_projection",
+  parameters = c(0.6380,  0.0307, -0.0200),
+  zenith_col_row = c(645, 494),
+  horizon_radius = 378,
+  is_horizon_circle_clipped = FALSE,
+  max_zenith_angle = 94.8,
+  notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
+  contact_information = "gastonmaurodiaz@gmail.com"
+)
+
+foo <- add_radiometry_spec(
+  foo,
+  embedded_metadata_sig = "exif_01",
+  geometry_spec = "simple_method",
+  id = "spectral_bands",
+  type = "interpretive_constraint",
+  cfa_pattern = matrix(c("Green", "Yellow",
+                         "Magenta", "Cyan"), byrow = TRUE, ncol = 2),
+  spectral_mapping = list(Red = "(Yellow + Magenta)/2",
+                          Green = "Green",
+                          Blue = "Cyan"),
+  offset_value = list("100" = 0),
+  contact_information = "gastonmaurodiaz@gmail.com"
+)
 ```
 
-What is special about using `README.Rmd` instead of just `README.md`?
-You can include R chunks like so:
+A registry entry available in memory can be quickly inspected to
+understand which instrument it describes:
 
 ``` r
-summary(cars)
-#>      speed           dist       
-#>  Min.   : 4.0   Min.   :  2.00  
-#>  1st Qu.:12.0   1st Qu.: 26.00  
-#>  Median :15.0   Median : 36.00  
-#>  Mean   :15.4   Mean   : 42.98  
-#>  3rd Qu.:19.0   3rd Qu.: 56.00  
-#>  Max.   :25.0   Max.   :120.00
+foo
+#> <Registry entry>
+#> 
+#> Instrument system
+#> -----------------
+#> ID:            Nikon_Coolpix5700.FCE9.CIEFAP
+#> Configuration: Camera body + auxiliary lens
+#> Institution:   CIEFAP
+#> Camera body:
+#>   Model:        E5700
+#>   Manufacturer: NIKON CORP
+#>   Serial:       7053067
+#> Lens:
+#>   Model:        Zoom Nikkor ED 8.9-71.2mm 1:2.8-4.2
+#>   Manufacturer: NIKON CORP
+#> Auxiliary lens:
+#>   Model:        Fisheye Converter FC-E9 0.2x
+#>   Manufacturer: NIKON CORP
+#> 
+#> Registry contents
+#> -----------------
+#> File signatures: 1
+#> Embedded metadata signatures: 1
+#> 
+#> * exif_01
+#>     Geometry specifications: 1
+#>       - simple_method (radiometry: 1)
+#> 
+#> Total geometry specifications: 1
+#> Total radiometry specifications: 1
 ```
 
-You’ll still need to render `README.Rmd` regularly, to keep `README.md`
-up-to-date. `devtools::build_readme()` is handy for this.
+`summary()` can be used to list the specification identifiers.
 
-You can also embed plots, for example:
+``` r
+summary(foo)
+#> 
+#> Registry entry — Summary
+#> ========================
+#> 
+#> File signatures (1)
+#> -------------------
+#> * raw
+#> 
+#> Embedded metadata signatures (1)
+#> ---------------------------------
+#> * exif_01
+#>     Dimensions:
+#>       - 1288 x 962
+#>     Geometry specifications (1):
+#>       - simple_method
+#>           Radiometry specifications (1):
+#>             * spectral_bands
+```
 
-<img src="man/figures/README-pressure-1.png" width="100%" />
+The `get_*()` helpers allow specifications to be retrieved easily for
+use in scripts that interact with `rcaiman`.
 
-In that case, don’t forget to commit and push the resulting figure
-files, so they display on GitHub and CRAN.
+``` r
+fs <- get_file_sig(foo, "raw")
+em <- get_embedded_metadata_sig(foo, "exif_01")
+fs <- get_file_sig(foo, em$file_sig)
+spec <- get_geometry_spec(foo, "exif_01", "simple_method")
+spec <- get_geometry_spec(em, "simple_method")
+spec <- get_geometry_spec(foo, "exif_01", "simple_method")
+rspec <- get_radiometry_spec(spec, "spectral_bands")
+rspec <- get_radiometry_spec(foo, "exif_01", "simple_method", "spectral_bands")
+```
+
+A registry snapshot can be exported as a YAML file describing the
+geometric projection and radiometric interpretation of the imaging
+system:
+
+``` r
+export_registry_snapshot(
+  registry_entry = foo,
+  embedded_metadata_sig = "exif_01",
+  geometry_spec = "simple_method",
+  radiometry_spec = "spectral_bands",
+  file = "registry_snapshot.yaml"
+)
+```
+
+## On calibration
+
+The functions `calibrate_lens()` and `extract_radiometry()` provide
+support for implementing the simple calibration method described in:
+
+Díaz, G. M., Lang, M., & Kaha, M. (2024).  
+*Simple calibration of fisheye lenses for hemispherical photography of
+the forest canopy.*  
+Agricultural and Forest Meteorology, 352, 110020.  
+<https://doi.org/10.1016/j.agrformet.2024.110020>
+
+## Registry architecture
+
+The registry framework can be organised as a small modular suite of
+packages:
+
+rcaiman.registry → registry framework  
+rcaiman.registry.data → registry entries maintained with the project  
+rcaiman.registry.<lab> → registries maintained by individual groups
+
+This arrangement allows different research groups to maintain and share
+their own imaging system definitions while remaining compatible with the
+broader `rcaiman` ecosystem.
+
+## Extending the registry ecosystem
+
+The registry framework is intentionally flexible. In addition to the
+registry entries distributed in rcaiman.registry.data (currently under
+development), research groups may choose to distribute their own
+registry definitions through dedicated R packages.
+
+One simple naming convention that can help keep things organised is:
+
+`rcaiman.registry.<lab_or_project>`
+
+Packages following this pattern would typically depend on
+`rcaiman.registry` and contain custom `hs_registry_entry` definitions or
+YAML snapshots describing specific imaging systems.
+
+This approach allows registry definitions to evolve in a distributed
+way, while still making it easy to share them within the community.

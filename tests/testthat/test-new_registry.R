@@ -1,3 +1,3 @@
-test_that("`new_registry()` returns a `hemispherical_camera_registry`", {
-  expect_true(inherits(new_registry("test", device = "test"), "hemispherical_camera_registry"))
+test_that("`new_registry_entry()` returns a `hs_registry_entry`", {
+  expect_true(inherits(new_registry_entry("test", device = "test"), "hs_registry_entry"))
 })
