@@ -7,8 +7,6 @@
 
 [![Lifecycle:
 experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
-[![CRAN
-status](https://www.r-pkg.org/badges/version/rcaiman.registry)](https://CRAN.R-project.org/package=rcaiman.registry)
 <!-- badges: end -->
 
 `rcaiman.registry` provides the infrastructure used by `rcaiman` to
@@ -238,6 +236,3 @@ One simple naming convention that can help keep things organised is:
 Packages following this pattern would typically depend on
 `rcaiman.registry` and contain custom `hs_registry_entry` definitions or
 YAML snapshots describing specific imaging systems.
-
-This approach allows registry definitions to evolve in a distributed
-way, while still making it easy to share them within the community.
