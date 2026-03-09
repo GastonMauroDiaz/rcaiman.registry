@@ -42,6 +42,8 @@ foo <- add_embedded_metadata_sig(
   id = "exif_01",
   namespace = "exif",
   dim = c(1288, 962),
+  validated_with_rawpy = "0.19.0",
+  validated_with_libraw = "0.21.1",
   rules = list(
     "Camera Model Name" = "E5700",
     "Software" = "E5700v1.1",
@@ -85,6 +87,6 @@ foo <- add_radiometry_spec(
 # -------------------------------------------------------------------------
 
 fs <- get_file_sig(foo, "raw")
-em <- get_embedded_metadata_sig(foo, "exif_01")
-fs <- get_file_sig(foo, em$file_sig)
+ems <- get_embedded_metadata_sig(foo, "exif_01")
+fs <- get_file_sig(foo, ems$file_sig)
 }

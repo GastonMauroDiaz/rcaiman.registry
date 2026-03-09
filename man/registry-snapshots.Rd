@@ -9,7 +9,8 @@ export_registry_snapshot(
   registry_entry,
   embedded_metadata_sig,
   geometry_spec,
-  radiometry_spec,
+  interpretive_constraint,
+  flat_field_correction,
   file
 )
 
@@ -25,8 +26,13 @@ embedded metadata signature.}
 \item{geometry_spec}{Character vector of length one.
 Identifier of geometry specification.}
 
-\item{radiometry_spec}{Character vector of length one.
-Identifier of radiometry specification.}
+\item{interpretive_constraint}{optional character vector of length one.
+Identifier of a \link{radiometry_spec} of type \code{interpretive_constraint}.
+Provide \code{NULL} in the case of JPEG files or when the use of RAW metadata
+via \emph{rawpy} is preferred.}
+
+\item{flat_field_correction}{character vector of length one.
+Identifier of a \link{radiometry_spec} of type \code{flat_field_correction}.}
 
 \item{file}{character vector of length one. Path to the YAML file used to
 write or read the snapshot.}
@@ -42,21 +48,22 @@ Create and read portable snapshots of registry entries stored as YAML files.
 \details{
 A registry snapshot is a YAML representation of a specific subset of
 an \link{hs_registry_entry} object. It captures a single combination of
-\link{embedded_metadata_sig}, \link{geometry_spec}, and \link{radiometry_spec}, together
-with minimal metadata about the exporting environment.
+\link{embedded_metadata_sig}, \link{geometry_spec}, and \link{radiometry_spec} with
+\verb{type = "interpretive_constraint} and with \code{type = "flat_field_correction"},
+together with intrument metadata and minimal metadata about the
+exporting environment.
 
-This mechanism provides a lightweight way to declare image
-geometric projection and radiometric correction without requiring the full
-registry infrastructure.
+This mechanism provides a lightweight way to declare image geometric
+projection and radiometric correction without requiring the full registry
+infrastructure. In this way, the YAML file can act as the metadata of
+pre-processed images.
 
-The function \code{\link[=export_registry_snapshot]{export_registry_snapshot()}} writes a snapshot file, while
-\code{\link[=read_registry_snapshot]{read_registry_snapshot()}} reconstructs an \link{hs_registry_entry} object from
-such file. The read functionality makes this format also useful to store and
-distribute single-banch registry estries.
+Moreover, \code{\link[=read_registry_snapshot]{read_registry_snapshot()}} reconstructs an \link{hs_registry_entry}
+object from a snapshot YAML file, making this format also useful to store and
+distribute single-branch registry estries.
 }
 \examples{
 
-\dontrun{
 # Build the object to export ----------------------------------------------
 
 foo <- new_registry_entry(
@@ -83,6 +90,8 @@ foo <- add_embedded_metadata_sig(
   id = "exif_01",
   namespace = "exif",
   dim = c(1288, 962),
+  validated_with_rawpy = "0.19.0",
+  validated_with_libraw = "0.21.1",
   rules = list(
     "Camera Model Name" = "E5700",
     "Software" = "E5700v1.1",
@@ -135,48 +144,12 @@ foo <- add_radiometry_spec(
   contact_information = "gastonmaurodiaz@gmail.com"
 )
 
-spec <- get_geometry_spec(foo,
-                          "exif_01", "simple_method")
-z <- zenith_image(spec$horizon_radius*2, spec$parameters)
-a <- azimuth_image(z)
-files <- system.file("external/flat_field_image.tif", package = "rcaiman.registry")
-sampling_points <- fibonacci_points(z, a, 10)
-fnumber <- c(5)
-radiance <- list()
-for (i in seq_along(files)) {
-  r <- read_caim(files[i])
-  sp <- lapply(1:4, function(i) extract_rr(r[[i]], z, a, sampling_points)$sky_points)
-  df <- lapply(sp, function(x) x[,"rr"]) \%>\% data.frame()
-  names(df) <- names(r)
-  radiance[[i]] <- df
-}
-names(radiance) <- fnumber
-angles <- sp[[1]][, c("z", "a")]
-names(angles) <- c("zenith", "azimuth")
-data <- list(angles, radiance)
-names(data) <- c("angles", "relative_radiance")
-
-
-foo <- add_radiometry_spec(
-  foo,
-  embedded_metadata_sig = "exif_01",
-  geometry_spec = "simple_method",
-  id = "flat_field_generation",
-  type = "flat_field_correction",
-  model = "flat_field_trend_surface",
-  data = data,
-  notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
-  contact_information = "gastonmaurodiaz@gmail.com"
-)
-
-# -------------------------------------------------------------------------
-
 export_registry_snapshot(foo,
                          "exif_01",
                          "simple_method",
-                         "flat_field_generation",
+                         "spectral_bands",
+                         "simple_method",
                          "registry_snapshot.yaml")
-}
 
 read_registry_snapshot(system.file("external/registry_snapshot.yaml", package = "rcaiman.registry"))
 

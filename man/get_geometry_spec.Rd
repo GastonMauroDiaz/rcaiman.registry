@@ -64,6 +64,8 @@ foo <- add_embedded_metadata_sig(
   id = "exif_01",
   namespace = "exif",
   dim = c(1288, 962),
+  validated_with_rawpy = "0.19.0",
+  validated_with_libraw = "0.21.1",
   rules = list(
     "Camera Model Name" = "E5700",
     "Software" = "E5700v1.1",
@@ -105,9 +107,9 @@ foo <- add_radiometry_spec(
 
 # -------------------------------------------------------------------------
 
-spec <- get_geometry_spec(foo, "exif_01", "simple_method")
-em <- get_embedded_metadata_sig(foo, "exif_01")
-spec <- get_geometry_spec(em, "simple_method")
+gspec <- get_geometry_spec(foo, "exif_01", "simple_method")
+ems <- get_embedded_metadata_sig(foo, "exif_01")
+gspec <- get_geometry_spec(ems, "simple_method")
 }
 \seealso{
 \code{\link[=add_geometry_spec]{add_geometry_spec()}}, \code{\link[=get_embedded_metadata_sig]{get_embedded_metadata_sig()}}, \code{\link[=get_radiometry_spec]{get_radiometry_spec()}}

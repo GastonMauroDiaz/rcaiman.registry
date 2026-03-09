@@ -17,9 +17,9 @@
 #' @param path_to_csv_uncal,path_to_csv_cal character vectors of length one.
 #'   Paths to CSV files created with ImageJ’s point selection tool (uncalibrated
 #'   and calibrated images, respectively).
-#' @param zenith_colrow_uncal,zenith_colrow_cal numeric vectors of length two.
+#' @param zenith_col_row_uncal,zenith_col_row_cal numeric vectors of length two.
 #'   Raster coordinates of the zenith for the uncalibrated and calibrated
-#'   images; see [calc_zenith_colrow()].
+#'   images; see [calc_zenith_col_row()].
 #' @param diameter_cal numeric vector of length one. Image diameter (pixels) of
 #'   the calibrated camera.
 #' @param projection_coef numeric vector. Lens projection coefficients of the
@@ -37,13 +37,13 @@
 #'     `horizon_radius`.}
 #' }
 #'
-#' @seealso [calibrate_lens()], [calc_zenith_colrow()]
+#' @seealso [calibrate_lens()], [calc_zenith_col_row()]
 #'
 #' @export
 crosscalibrate_lens <- function(path_to_csv_uncal,
                                 path_to_csv_cal,
-                                zenith_colrow_uncal,
-                                zenith_colrow_cal,
+                                zenith_col_row_uncal,
+                                zenith_col_row_cal,
                                 diameter_cal,
                                 projection_coef,
                                 degree = 3) {
@@ -52,8 +52,8 @@ crosscalibrate_lens <- function(path_to_csv_uncal,
   .assert_file_exists(path_to_csv_uncal)
   .check_vector(path_to_csv_cal, "character", 1)
   .assert_file_exists(path_to_csv_cal)
-  .check_vector(zenith_colrow_uncal, "numeric", 2, sign = "positive")
-  .check_vector(zenith_colrow_cal, "numeric", 2, sign = "positive")
+  .check_vector(zenith_col_row_uncal, "numeric", 2, sign = "positive")
+  .check_vector(zenith_col_row_cal, "numeric", 2, sign = "positive")
   .check_vector(diameter_cal, "numeric", 1, sign = "positive")
   .check_vector(projection_coef, "numeric", sign = "any")
   .check_vector(degree, "integerish", 1, sign = "positive")
@@ -64,10 +64,10 @@ crosscalibrate_lens <- function(path_to_csv_uncal,
   csv_cal <- cbind(csv_cal$X, csv_cal$Y)
 
   ## center in (0,0)
-  csv_uncal[, 1] <- csv_uncal[, 1] - zenith_colrow_uncal[1]
-  csv_uncal[, 2] <- csv_uncal[, 2] - zenith_colrow_uncal[2]
-  csv_cal[, 1] <- csv_cal[, 1] - zenith_colrow_cal[1]
-  csv_cal[, 2] <- csv_cal[, 2] - zenith_colrow_cal[2]
+  csv_uncal[, 1] <- csv_uncal[, 1] - zenith_col_row_uncal[1]
+  csv_uncal[, 2] <- csv_uncal[, 2] - zenith_col_row_uncal[2]
+  csv_cal[, 1] <- csv_cal[, 1] - zenith_col_row_cal[1]
+  csv_cal[, 2] <- csv_cal[, 2] - zenith_col_row_cal[2]
 
   csv_uncal <- pracma::cart2pol(csv_uncal)
   csv_cal <- pracma::cart2pol(csv_cal)

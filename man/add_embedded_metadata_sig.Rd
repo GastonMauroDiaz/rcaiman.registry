@@ -10,6 +10,8 @@ add_embedded_metadata_sig(
   namespace,
   rules,
   dim,
+  validated_with_rawpy,
+  validated_with_libraw,
   date = NULL,
   file_sig = NULL
 )
@@ -29,7 +31,21 @@ and does not trigger any validation against \code{rules} at registration time.}
 metadata values. Names must correspond to tag names.}
 
 \item{dim}{integer-like numeric vector of length two. Width and height in
-pixels of the raster from which \code{zenith_col_row} was derived.}
+pixels of the raster that have been validated to be compatible with the
+specifications associated with this \code{embedded_metadata_sig}.}
+
+\item{validated_with_rawpy}{character vector. Version(s) of the \emph{rawpy}
+Python package (see \code{\link[rcaiman:read_caim_raw]{rcaiman::read_caim_raw()}}) that have been validated
+to be compatible with the specifications associated with this
+\code{embedded_metadata_sig}. Multiple values allow recording additional
+verified versions without overwriting previously validated ones. Use \code{NA}
+for the signature of JPEG files.}
+
+\item{validated_with_libraw}{character vector. Version(s) of the \emph{LibRaw}
+library used by \emph{rawpy} that have been validated to be compatible with the
+specifications associated with this \code{embedded_metadata_sig}. Multiple
+values allow recording additional verified versions without overwriting
+previously validated ones. Use \code{NA} for the signature of JPEG files.}
 
 \item{date}{optional \code{\link{Date}} object. Date when the specification was added
 to the registry. If \code{NULL}, the current system date is used automatically.}
@@ -70,6 +86,8 @@ foo <- add_embedded_metadata_sig(
   id = "exif_01",
   namespace = "exif",
   dim = c(1288, 962),
+  validated_with_rawpy = "0.19.0",
+  validated_with_libraw = "0.21.1",
   rules = list(
     "Camera Model Name" = "E5700",
     "Software" = "E5700v1.1",

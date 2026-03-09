@@ -5,7 +5,7 @@
 \alias{hs_registry_entry}
 \title{Registry entry for a hemispherical imaging system}
 \description{
-Objects of class \link{hs_registry_entry} describe instrument
+Objects of class \link{hs_registry_entry} describe an image systems and its
 specifications according with the requirements of \pkg{rcaiman} core
 functions. They store structured data organized into descriptive and
 specification domains.

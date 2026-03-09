@@ -70,6 +70,8 @@ foo <- add_embedded_metadata_sig(
   id = "exif_01",
   namespace = "exif",
   dim = c(1288, 962),
+  validated_with_rawpy = "0.19.0",
+  validated_with_libraw = "0.21.1",
   rules = list(
     "Camera Model Name" = "E5700",
     "Software" = "E5700v1.1",
@@ -109,6 +111,18 @@ foo <- add_radiometry_spec(
   offset_value = list("100" = 0),
   contact_information = "gastonmaurodiaz@gmail.com"
 )
+
+foo <- add_radiometry_spec(
+  foo,
+  embedded_metadata_sig = "exif_01",
+  geometry_spec = "simple_method",
+  id = "simple_method",
+  type = "flat_field_correction",
+  model = "flat_field_simple_polynomial",
+  parameters = list("5.0" = c(0.0638, -0.101)),
+  notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
+  contact_information = "gastonmaurodiaz@gmail.com"
+)
 ```
 
 A registry entry available in memory can be quickly inspected to
@@ -141,10 +155,10 @@ foo
 #> 
 #> * exif_01
 #>     Geometry specifications: 1
-#>       - simple_method (radiometry: 1)
+#>       - simple_method (radiometry: 2)
 #> 
 #> Total geometry specifications: 1
-#> Total radiometry specifications: 1
+#> Total radiometry specifications: 2
 ```
 
 `summary()` can be used to list the specification identifiers.
@@ -152,7 +166,7 @@ foo
 ``` r
 summary(foo)
 #> 
-#> Registry entry — Summary
+#> Registry entry - Summary
 #> ========================
 #> 
 #> File signatures (1)
@@ -166,7 +180,8 @@ summary(foo)
 #>       - 1288 x 962
 #>     Geometry specifications (1):
 #>       - simple_method
-#>           Radiometry specifications (1):
+#>           Radiometry specifications (2):
+#>             * simple_method
 #>             * spectral_bands
 ```
 
@@ -175,28 +190,47 @@ use in scripts that interact with `rcaiman`.
 
 ``` r
 fs <- get_file_sig(foo, "raw")
-em <- get_embedded_metadata_sig(foo, "exif_01")
-fs <- get_file_sig(foo, em$file_sig)
-spec <- get_geometry_spec(foo, "exif_01", "simple_method")
-spec <- get_geometry_spec(em, "simple_method")
-spec <- get_geometry_spec(foo, "exif_01", "simple_method")
-rspec <- get_radiometry_spec(spec, "spectral_bands")
+ems <- get_embedded_metadata_sig(foo, "exif_01")
+fs <- get_file_sig(foo, ems$file_sig)
+gspec <- get_geometry_spec(foo, "exif_01", "simple_method")
+gspec <- get_geometry_spec(ems, "simple_method")
+rspec <- get_radiometry_spec(gspec, "spectral_bands")
 rspec <- get_radiometry_spec(foo, "exif_01", "simple_method", "spectral_bands")
 ```
 
-A registry snapshot can be exported as a YAML file describing the
-geometric projection and radiometric interpretation of the imaging
-system:
+The registry describes imaging systems, while registry snapshots capture
+the subset of metadata required to interpret individual processed
+images.
 
 ``` r
 export_registry_snapshot(
   registry_entry = foo,
   embedded_metadata_sig = "exif_01",
   geometry_spec = "simple_method",
-  radiometry_spec = "spectral_bands",
+  interpretive_constraint = "spectral_bands",
+  flat_field_correction = simple_method,
   file = "registry_snapshot.yaml"
 )
 ```
+
+### Conceptual model
+
+    Registry
+       ↓
+    registry entries
+       ↓
+    describe
+    imaging systems
+
+    Registry entry
+       ↓
+    can generate
+    registry snapshot
+
+    Registry snapshot
+       ↓
+    distributed as metadata with
+    preprocessed images
 
 ## On calibration
 
@@ -211,28 +245,38 @@ Agricultural and Forest Meteorology, 352, 110020.
 
 ## Registry architecture
 
-The registry framework can be organised as a small modular suite of
+The registry project can be organised as a small modular suite of
 packages:
 
-rcaiman.registry → registry framework  
-rcaiman.registry.data → registry entries maintained with the project  
-rcaiman.registry.<lab> → registries maintained by individual groups
+rcaiman.registry → registry framework
 
-This arrangement allows different research groups to maintain and share
-their own imaging system definitions while remaining compatible with the
-broader `rcaiman` ecosystem.
+rcaiman.registry.data → registry entries maintained by maintainer
 
-## Extending the registry ecosystem
+rcaiman.registry.<foo> → registry entries maintained by individual
+groups
 
-The registry framework is intentionally flexible. In addition to the
-registry entries distributed in rcaiman.registry.data (currently under
-development), research groups may choose to distribute their own
-registry definitions through dedicated R packages.
+## Extending the registry
 
-One simple naming convention that can help keep things organised is:
-
-`rcaiman.registry.<lab_or_project>`
+The `rcaiman.registry.<foo>` naming convention improves discoverability
+and signals that the package extends the registry project. Replacing
+`<foo>` with a lab or project name provides an intuitive naming scheme.
 
 Packages following this pattern would typically depend on
-`rcaiman.registry` and contain custom `hs_registry_entry` definitions or
-YAML snapshots describing specific imaging systems.
+`rcaiman.registry` and contain `hs_registry_entry` objects describing
+specific imaging systems. Alternatively, when resources for creating a
+full R package are not available, a simple repository containing YAML
+snapshot files can also be used.
+
+These extension packages are encouraged to distribute:
+
+- the registry entry describing the imaging system and its
+  specifications
+- raw image data
+- the corresponding preprocessed output
+
+Providing pairs of raw and preprocessed data enables testing,
+validation, and reproducibility of registry entries.
+
+GitHub repositories provide a convenient distribution channel for these
+packages, particularly given the size limitations imposed by CRAN for
+packages containing example datasets.

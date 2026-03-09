@@ -1,7 +1,7 @@
 #' Registry entry for a hemispherical imaging system
 #'
 #' @description
-#' Objects of class [hs_registry_entry] describe instrument
+#' Objects of class [hs_registry_entry] describe an image systems and its
 #' specifications according with the requirements of \pkg{rcaiman} core
 #' functions. They store structured data organized into descriptive and
 #' specification domains.
@@ -146,9 +146,12 @@ NULL
 #'   \item{id}{Identifier (snake_case).}
 #'   \item{namespace}{Lowercase identifier of metadata namespace (e.g., `"exif"`).}
 #'   \item{dim}{Integer-like vector of length two specifying image width and height.}
+#'   \item{validated_with_rawpy}{Character vector of validated `rawpy` versions.}
+#'   \item{validated_with_libraw}{Character vector of validated `LibRaw` versions.}
 #'   \item{rules}{Named list of expected tag–value pairs.}
 #'   \item{date}{Date of signature declaration.}
-#'   \item{file_sig}{Optional foreign key referencing a [file_sig] of the [hs_registry_entry] object.}
+#'   \item{file_sig}{Optional foreign key referencing a [file_sig] of the
+#'     [hs_registry_entry] object.}
 #'   \item{geometry}{Named list of [geometry_spec] objects.}
 #' }
 #'

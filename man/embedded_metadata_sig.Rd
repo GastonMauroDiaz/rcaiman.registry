@@ -37,9 +37,12 @@ An \code{embedded_metadata_sig} is an S3 object with the following fields:
 \item{id}{Identifier (snake_case).}
 \item{namespace}{Lowercase identifier of metadata namespace (e.g., \code{"exif"}).}
 \item{dim}{Integer-like vector of length two specifying image width and height.}
+\item{validated_with_rawpy}{Character vector of validated \code{rawpy} versions.}
+\item{validated_with_libraw}{Character vector of validated \code{LibRaw} versions.}
 \item{rules}{Named list of expected tag–value pairs.}
 \item{date}{Date of signature declaration.}
-\item{file_sig}{Optional foreign key referencing a \link{file_sig} of the \link{hs_registry_entry} object.}
+\item{file_sig}{Optional foreign key referencing a \link{file_sig} of the
+\link{hs_registry_entry} object.}
 \item{geometry}{Named list of \link{geometry_spec} objects.}
 }
 }

@@ -3,6 +3,8 @@
     namespace,
     rules,
     dim,
+    validated_with_rawpy,
+    validated_with_libraw,
     date = NULL,
     file_sig = NULL
 ) {
@@ -12,6 +14,8 @@
   .check_vector(namespace, "character", 1)
   .assert_id(namespace)
   .check_vector(dim, "integerish", length = 2)
+  .check_vector(validated_with_rawpy, "character", allow_na = TRUE)
+  .check_vector(validated_with_libraw, "character", allow_na = TRUE)
   if (length(rules) == 0) {
     stop("`rules` must contain at least one tag expectation.", call. = FALSE)
   }
@@ -59,6 +63,8 @@
     id = id,
     namespace = namespace,
     dim = dim,
+    validated_with_rawpy = validated_with_rawpy,
+    validated_with_libraw = validated_with_libraw,
     rules = rules,
     date = date,
     file_sig = file_sig,
@@ -81,7 +87,19 @@
 #'   embedded metadata namespace (e.g. "exif", "xmp"). This value is descriptive
 #'   and does not trigger any validation against `rules` at registration time.
 #' @param dim integer-like numeric vector of length two. Width and height in
-#'   pixels of the raster from which `zenith_col_row` was derived.
+#'   pixels of the raster that have been validated to be compatible with the
+#'   specifications associated with this `embedded_metadata_sig`.
+#' @param validated_with_rawpy character vector. Version(s) of the *rawpy*
+#'   Python package (see [rcaiman::read_caim_raw()]) that have been validated
+#'   to be compatible with the specifications associated with this
+#'   `embedded_metadata_sig`. Multiple values allow recording additional
+#'   verified versions without overwriting previously validated ones. Use `NA`
+#'   for the signature of JPEG files.
+#' @param validated_with_libraw character vector. Version(s) of the *LibRaw*
+#'   library used by *rawpy* that have been validated to be compatible with the
+#'   specifications associated with this `embedded_metadata_sig`. Multiple
+#'   values allow recording additional verified versions without overwriting
+#'   previously validated ones. Use `NA` for the signature of JPEG files.
 #' @param rules named list composed of character vectors of length one. Expected
 #'   metadata values. Names must correspond to tag names.
 #' @param date optional [`Date`] object. Date when the specification was added
@@ -121,6 +139,8 @@
 #'   id = "exif_01",
 #'   namespace = "exif",
 #'   dim = c(1288, 962),
+#'   validated_with_rawpy = "0.19.0",
+#'   validated_with_libraw = "0.21.1",
 #'   rules = list(
 #'     "Camera Model Name" = "E5700",
 #'     "Software" = "E5700v1.1",
@@ -140,6 +160,8 @@ add_embedded_metadata_sig <- function(
     namespace,
     rules,
     dim,
+    validated_with_rawpy,
+    validated_with_libraw,
     date = NULL,
     file_sig = NULL
 ) {
@@ -168,6 +190,8 @@ add_embedded_metadata_sig <- function(
     id = id,
     namespace = namespace,
     dim = dim,
+    validated_with_rawpy = validated_with_rawpy,
+    validated_with_libraw = validated_with_libraw,
     rules = rules,
     date = date,
     file_sig = file_sig

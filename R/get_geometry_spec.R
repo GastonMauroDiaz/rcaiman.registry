@@ -51,6 +51,8 @@
 #'   id = "exif_01",
 #'   namespace = "exif",
 #'   dim = c(1288, 962),
+#'   validated_with_rawpy = "0.19.0",
+#'   validated_with_libraw = "0.21.1",
 #'   rules = list(
 #'     "Camera Model Name" = "E5700",
 #'     "Software" = "E5700v1.1",
@@ -92,9 +94,9 @@
 #'
 #' # -------------------------------------------------------------------------
 #'
-#' spec <- get_geometry_spec(foo, "exif_01", "simple_method")
-#' em <- get_embedded_metadata_sig(foo, "exif_01")
-#' spec <- get_geometry_spec(em, "simple_method")
+#' gspec <- get_geometry_spec(foo, "exif_01", "simple_method")
+#' ems <- get_embedded_metadata_sig(foo, "exif_01")
+#' gspec <- get_geometry_spec(ems, "simple_method")
 get_geometry_spec <- function(x, ...) {
   UseMethod("get_geometry_spec")
 }

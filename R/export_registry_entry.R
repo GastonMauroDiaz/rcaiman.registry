@@ -6,25 +6,32 @@
 #' @details
 #' A registry snapshot is a YAML representation of a specific subset of
 #' an [hs_registry_entry] object. It captures a single combination of
-#' [embedded_metadata_sig], [geometry_spec], and [radiometry_spec], together
-#' with minimal metadata about the exporting environment.
+#' [embedded_metadata_sig], [geometry_spec], and [radiometry_spec] with
+#' `type = "interpretive_constraint` and with `type = "flat_field_correction"`,
+#' together with intrument metadata and minimal metadata about the
+#' exporting environment.
 #'
-#' This mechanism provides a lightweight way to declare image
-#' geometric projection and radiometric correction without requiring the full
-#' registry infrastructure.
+#' This mechanism provides a lightweight way to declare image geometric
+#' projection and radiometric correction without requiring the full registry
+#' infrastructure. In this way, the YAML file can act as the metadata of
+#' pre-processed images.
 #'
-#' The function [export_registry_snapshot()] writes a snapshot file, while
-#' [read_registry_snapshot()] reconstructs an [hs_registry_entry] object from
-#' such file. The read functionality makes this format also useful to store and
-#' distribute single-banch registry estries.
+#' Moreover, [read_registry_snapshot()] reconstructs an [hs_registry_entry]
+#' object from a snapshot YAML file, making this format also useful to store and
+#' distribute single-branch registry estries.
 #'
 #' @param file character vector of length one. Path to the YAML file used to
 #'   write or read the snapshot.
+#' @param interpretive_constraint optional character vector of length one.
+#'   Identifier of a [radiometry_spec] of type `interpretive_constraint`.
+#'   Provide `NULL` in the case of JPEG files or when the use of RAW metadata
+#'   via *rawpy* is preferred.
+#' @param flat_field_correction character vector of length one.
+#'   Identifier of a [radiometry_spec] of type `flat_field_correction`.
 #'
 #' @inheritParams add_file_sig
 #' @inheritParams get_embedded_metadata_sig
 #' @inheritParams get_geometry_spec
-#' @inheritParams get_radiometry_spec
 #'
 #' @return
 #'
@@ -41,7 +48,6 @@
 #'
 #' @examples
 #'
-#' \dontrun{
 #' # Build the object to export ----------------------------------------------
 #'
 #' foo <- new_registry_entry(
@@ -68,6 +74,8 @@
 #'   id = "exif_01",
 #'   namespace = "exif",
 #'   dim = c(1288, 962),
+#'   validated_with_rawpy = "0.19.0",
+#'   validated_with_libraw = "0.21.1",
 #'   rules = list(
 #'     "Camera Model Name" = "E5700",
 #'     "Software" = "E5700v1.1",
@@ -120,48 +128,12 @@
 #'   contact_information = "gastonmaurodiaz@gmail.com"
 #' )
 #'
-#' spec <- get_geometry_spec(foo,
-#'                           "exif_01", "simple_method")
-#' z <- zenith_image(spec$horizon_radius*2, spec$parameters)
-#' a <- azimuth_image(z)
-#' files <- system.file("external/flat_field_image.tif", package = "rcaiman.registry")
-#' sampling_points <- fibonacci_points(z, a, 10)
-#' fnumber <- c(5)
-#' radiance <- list()
-#' for (i in seq_along(files)) {
-#'   r <- read_caim(files[i])
-#'   sp <- lapply(1:4, function(i) extract_rr(r[[i]], z, a, sampling_points)$sky_points)
-#'   df <- lapply(sp, function(x) x[,"rr"]) %>% data.frame()
-#'   names(df) <- names(r)
-#'   radiance[[i]] <- df
-#' }
-#' names(radiance) <- fnumber
-#' angles <- sp[[1]][, c("z", "a")]
-#' names(angles) <- c("zenith", "azimuth")
-#' data <- list(angles, radiance)
-#' names(data) <- c("angles", "relative_radiance")
-#'
-#'
-#' foo <- add_radiometry_spec(
-#'   foo,
-#'   embedded_metadata_sig = "exif_01",
-#'   geometry_spec = "simple_method",
-#'   id = "flat_field_generation",
-#'   type = "flat_field_correction",
-#'   model = "flat_field_trend_surface",
-#'   data = data,
-#'   notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
-#'   contact_information = "gastonmaurodiaz@gmail.com"
-#' )
-#'
-#' # -------------------------------------------------------------------------
-#'
 #' export_registry_snapshot(foo,
 #'                          "exif_01",
 #'                          "simple_method",
-#'                          "flat_field_generation",
+#'                          "spectral_bands",
+#'                          "simple_method",
 #'                          "registry_snapshot.yaml")
-#' }
 #'
 #' read_registry_snapshot(system.file("external/registry_snapshot.yaml", package = "rcaiman.registry"))
 #'
@@ -169,9 +141,17 @@ export_registry_snapshot <- function(
     registry_entry,
     embedded_metadata_sig,
     geometry_spec,
-    radiometry_spec,
+    interpretive_constraint,
+    flat_field_correction,
     file
 ) {
+   .check_registry_entry(registry_entry)
+   .check_vector(embedded_metadata_sig, "character", 1)
+   .check_vector(geometry_spec, "character", 1)
+   .check_vector(interpretive_constraint, "character", 1, allow_null = TRUE)
+   .check_vector(flat_field_correction, "character", 1)
+   .check_vector(file, "character", 1)
+
 
   .sanitize_snapshot <- function(x) {
 
@@ -193,17 +173,22 @@ export_registry_snapshot <- function(
 
   instrument_metadata <- registry_entry$instrument_metadata
 
-  em <- get_embedded_metadata_sig(registry_entry, embedded_metadata_sig)
-  fs <- if (!is.null(em$file_sig)) {
-    get_file_sig(registry_entry, em$file_sig)
+  ems <- get_embedded_metadata_sig(registry_entry, embedded_metadata_sig)
+  fs <- if (!is.null(ems$file_sig)) {
+    get_file_sig(registry_entry, ems$file_sig)
   } else {
     NULL
   }
-  geom <- get_geometry_spec(em, geometry_spec)
-  rad <- get_radiometry_spec(geom, radiometry_spec)
+  gspec <- get_geometry_spec(ems, geometry_spec)
+  if (!is.null(interpretive_constraint)) {
+    rspec_ic <- get_radiometry_spec(gspec, interpretive_constraint)
+  } else {
+    rspec_ic <- NULL
+  }
+  rspec_ffc <- get_radiometry_spec(gspec, flat_field_correction)
 
-  em$geometry <- NULL
-  geom$radiometry <- NULL
+  ems$geometry <- NULL
+  gspec$radiometry <- NULL
 
   snapshot <- list(
     schema_version = 1,
@@ -213,24 +198,30 @@ export_registry_snapshot <- function(
       date = as.character(Sys.Date())
     ),
     configuration = list(
-      embedded_metadata_sig = em$id,
-      geometry_spec = geom$id,
-      radiometry_spec = rad$id
+      embedded_metadata_sig = ems$id,
+      geometry_spec = gspec$id,
+      interpretive_constraint = if (!is.null(interpretive_constraint))
+        rspec_ic$id
+      else
+        NULL,
+      flat_field_correction = rspec_ffc$id
     ),
     registry_entry = if (is.null(fs)) {
       list(
         instrument_metadata = instrument_metadata,
-        embedded_metadata_sig = em,
-        geometry_spec = geom,
-        radiometry_spec = rad
+        embedded_metadata_sig = ems,
+        geometry_spec = gspec,
+        interpretive_constraint = rspec_ic,
+        flat_field_correction = rspec_ffc
       )
     } else {
       list(
         instrument_metadata = instrument_metadata,
         file_sig = fs,
-        embedded_metadata_sig = em,
-        geometry_spec = geom,
-        radiometry_spec = rad
+        embedded_metadata_sig = ems,
+        geometry_spec = gspec,
+        interpretive_constraint = rspec_ic,
+        flat_field_correction = rspec_ffc
       )
     }
   )
@@ -254,10 +245,10 @@ read_registry_snapshot <- function(file) {
 
   im <- entry$instrument_metadata
   fs <- entry$file_sig
-  em <- entry$embedded_metadata_sig
-  geom <- entry$geometry_spec
-  rad <- entry$radiometry_spec
-
+  ems <- entry$embedded_metadata_sig
+  gspec <- entry$geometry_spec
+  rspec_ic <- entry$interpretive_constraint
+  rspec_ffc <- entry$flat_field_correction
 
 
 # Fix radiometry spec -----------------------------------------------------
@@ -290,37 +281,43 @@ read_registry_snapshot <- function(file) {
 
     data
   }
-  if (!is.null(rad$data)) {
-    rad$data <- .reconstruct_flat_field_data(rad$data)
-    .check_flat_field_data(rad$data)
+  if (!is.null(rspec_ffc$data)) {
+    rspec_ffc$data <- .reconstruct_flat_field_data(rspec_ffc$data)
+    .check_flat_field_data(rspec_ffc$data)
   }
 
 # -------------------------------------------------------------------------
 
-  class(geom) <- "geometry_spec"
-  class(em) <- "embedded_metadata_sig"
-  class(rad) <- "radiometry_spec"
+  class(gspec) <- "geometry_spec"
+  class(ems) <- "embedded_metadata_sig"
+  class(rspec_ffc) <- "radiometry_spec"
+
+  if (!is.null(rspec_ic)) {
+    class(rspec_ic) <- "radiometry_spec"
+    rspec_ic_id <- rspec_ic$id
+  }
 
   if (!is.null(fs)) {
     class(fs) <- "file_sig"
     fs_id <- fs$id
   }
 
-  em_id <- em$id
-  geom_id <- geom$id
-  rad_id <- rad$id
+  ems_id <- ems$id
+  gspec_id <- gspec$id
+  rspec_ffc_id <- rspec_ffc$id
 
-  geom$radiometry <- list()
-  geom$radiometry[[rad_id]] <- rad
+  gspec$radiometry <- list()
+  if (!is.null(rspec_ic)) gspec$radiometry[[rspec_ic_id]] <- rspec_ic
+  gspec$radiometry[[rspec_ffc_id]] <- rspec_ffc
 
-  em$geometry <- list()
-  em$geometry[[geom_id]] <- geom
+  ems$geometry <- list()
+  ems$geometry[[gspec_id]] <- gspec
 
   registry_entry <- list(
     instrument_metadata = im
   )
   if (!is.null(fs)) registry_entry[[fs_id]] <- fs
-  registry_entry[[em_id]] <- em
+  registry_entry[[ems_id]] <- ems
 
   class(registry_entry) <- "hs_registry_entry"
 

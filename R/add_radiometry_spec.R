@@ -261,6 +261,8 @@
 #'   id = "exif_01",
 #'   namespace = "exif",
 #'   dim = c(1288, 962),
+#'   validated_with_rawpy = "0.19.0",
+#'   validated_with_libraw = "0.21.1",
 #'   rules = list(
 #'     "Camera Model Name" = "E5700",
 #'     "Software" = "E5700v1.1",
@@ -316,9 +318,9 @@
 #'
 #' # Generate the data argument ----------------------------------------------
 #'
-#' spec <- get_geometry_spec(foo,
+#' gspec <- get_geometry_spec(foo,
 #'                           "exif_01", "simple_method")
-#' z <- zenith_image(spec$horizon_radius*2, spec$parameters)
+#' z <- zenith_image(gspec$horizon_radius*2, spec$parameters)
 #' a <- azimuth_image(z)
 #' files <- system.file("external/flat_field_image.tif", package = "rcaiman.registry")
 #' sampling_points <- fibonacci_points(z, a, 10)

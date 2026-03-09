@@ -53,6 +53,8 @@
 #'   id = "exif_01",
 #'   namespace = "exif",
 #'   dim = c(1288, 962),
+#'   validated_with_rawpy = "0.19.0",
+#'   validated_with_libraw = "0.21.1",
 #'   rules = list(
 #'     "Camera Model Name" = "E5700",
 #'     "Software" = "E5700v1.1",
@@ -93,8 +95,8 @@
 #' )
 #'
 #' # -------------------------------------------------------------------------
-#' spec <- get_geometry_spec(foo, "exif_01", "simple_method")
-#' rspec <- get_radiometry_spec(spec, "spectral_bands")
+#' gspec <- get_geometry_spec(foo, "exif_01", "simple_method")
+#' rspec <- get_radiometry_spec(gspec, "spectral_bands")
 #' rspec <- get_radiometry_spec(foo, "exif_01", "simple_method", "spectral_bands")
 get_radiometry_spec <- function(x, ...) {
   UseMethod("get_radiometry_spec")

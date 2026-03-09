@@ -7,8 +7,8 @@
 crosscalibrate_lens(
   path_to_csv_uncal,
   path_to_csv_cal,
-  zenith_colrow_uncal,
-  zenith_colrow_cal,
+  zenith_col_row_uncal,
+  zenith_col_row_cal,
   diameter_cal,
   projection_coef,
   degree = 3
@@ -19,9 +19,9 @@ crosscalibrate_lens(
 Paths to CSV files created with ImageJ’s point selection tool (uncalibrated
 and calibrated images, respectively).}
 
-\item{zenith_colrow_uncal, zenith_colrow_cal}{numeric vectors of length two.
+\item{zenith_col_row_uncal, zenith_col_row_cal}{numeric vectors of length two.
 Raster coordinates of the zenith for the uncalibrated and calibrated
-images; see \code{\link[rcaiman:calc_zenith_colrow]{rcaiman::calc_zenith_colrow()}}.}
+images; see \code{\link[rcaiman:calc_zenith_col_row]{rcaiman::calc_zenith_col_row()}}.}
 
 \item{diameter_cal}{numeric vector of length one. Image diameter (pixels) of
 the calibrated camera.}
@@ -59,5 +59,5 @@ Estimate a lens projection for an uncalibrated camera by referencing a
 calibrated camera photographed from the exact same location.
 }
 \seealso{
-\code{\link[=calibrate_lens]{calibrate_lens()}}, \code{\link[rcaiman:calc_zenith_colrow]{rcaiman::calc_zenith_colrow()}}
+\code{\link[=calibrate_lens]{calibrate_lens()}}, \code{\link[rcaiman:calc_zenith_col_row]{rcaiman::calc_zenith_col_row()}}
 }
