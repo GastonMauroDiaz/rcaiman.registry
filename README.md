@@ -198,9 +198,8 @@ rspec <- get_radiometry_spec(gspec, "spectral_bands")
 rspec <- get_radiometry_spec(foo, "exif_01", "simple_method", "spectral_bands")
 ```
 
-The registry describes imaging systems, while registry snapshots capture
-the subset of metadata required to interpret individual processed
-images.
+A registry snapshot can be exported as a YAML file to be distributed as
+metadata alongside preprocessed images.
 
 ``` r
 export_registry_snapshot(
