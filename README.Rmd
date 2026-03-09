@@ -177,27 +177,6 @@ export_registry_snapshot(
 )
 ```
 
-### Conceptual model
-
-```
-Registry
-   ↓
-registry entries
-   ↓
-describe
-imaging systems
-
-Registry entry
-   ↓
-can generate
-registry snapshot
-
-Registry snapshot
-   ↓
-distributed as metadata with
-preprocessed images
-```
-
 ## On calibration
 
 The functions `calibrate_lens()` and `extract_radiometry()` provide
