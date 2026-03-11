@@ -21,7 +21,7 @@ and calibrated images, respectively).}
 
 \item{zenith_col_row_uncal, zenith_col_row_cal}{numeric vectors of length two.
 Raster coordinates of the zenith for the uncalibrated and calibrated
-images; see \code{\link[rcaiman:calc_zenith_col_row]{rcaiman::calc_zenith_col_row()}}.}
+images; see \code{\link[=calc_zenith_col_row]{calc_zenith_col_row()}}.}
 
 \item{diameter_cal}{numeric vector of length one. Image diameter (pixels) of
 the calibrated camera.}
@@ -59,5 +59,5 @@ Estimate a lens projection for an uncalibrated camera by referencing a
 calibrated camera photographed from the exact same location.
 }
 \seealso{
-\code{\link[=calibrate_lens]{calibrate_lens()}}, \code{\link[rcaiman:calc_zenith_col_row]{rcaiman::calc_zenith_col_row()}}
+\code{\link[=calibrate_lens]{calibrate_lens()}}, \code{\link[=calc_zenith_col_row]{calc_zenith_col_row()}}
 }

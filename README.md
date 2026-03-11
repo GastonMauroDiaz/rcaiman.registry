@@ -230,7 +230,8 @@ packages:
 
 rcaiman.registry → registry framework
 
-rcaiman.registry.data → registry entries maintained by maintainer
+rcaiman.registry.data → registry entries maintained by the
+*rcaiman.registry* maintainer
 
 rcaiman.registry.<foo> → registry entries maintained by individual
 groups
