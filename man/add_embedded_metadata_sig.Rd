@@ -7,13 +7,12 @@
 add_embedded_metadata_sig(
   registry_entry,
   id,
-  namespace,
   rules,
   dim,
-  validated_with_rawpy,
   validated_with_libraw,
-  date = NULL,
-  file_sig = NULL
+  validated_with_exiftool,
+  metadata_profile = "exiftool_g1_short_v1",
+  date = NULL
 )
 }
 \arguments{
@@ -23,37 +22,45 @@ add_embedded_metadata_sig(
 \item{id}{character vector of length one. Identifier of embedded metadata signature.
 Must use snake_case (lowercase letters, numbers, and underscores only)}
 
-\item{namespace}{character vector of length one. Lowercase identifier of the
-embedded metadata namespace (e.g. "exif", "xmp"). This value is descriptive
-and does not trigger any validation against \code{rules} at registration time.}
-
-\item{rules}{named list composed of character vectors of length one. Expected
-metadata values. Names must correspond to tag names.}
+\item{rules}{named list of embedded metadata identity rules. Each rule name
+is a stable snake_case identifier, and each rule must be a list with
+exactly four character fields: \code{group}, \code{tag}, \code{label}, and \code{expected}.
+\code{group} and \code{tag} identify the ExifTool metadata item, such as
+\code{"IFD0"} and \code{"Model"}; \code{label} is a human-readable name; and
+\code{expected} is the value that must match when validating an image.
+Duplicated \code{group} + \code{tag} pairs are not allowed. These rules may be
+written by hand or assembled from a metadata rules draft produced by
+\href{https://github.com/GastonMauroDiaz/rcaiman-projects}{rcaiman-projects} via
+the "Build metadata rules..." action.}
 
 \item{dim}{integer-like numeric vector of length two. Width and height in
 pixels of the raster that have been validated to be compatible with the
 specifications associated with this \code{embedded_metadata_sig}.}
 
-\item{validated_with_rawpy}{character vector. Version(s) of the \emph{rawpy}
-Python package (see \code{\link[rcaiman:read_caim_raw]{rcaiman::read_caim_raw()}}) that have been validated
-to be compatible with the specifications associated with this
-\code{embedded_metadata_sig}. Multiple values allow recording additional
-verified versions without overwriting previously validated ones. Use \code{NA}
-for the signature of JPEG files.}
-
 \item{validated_with_libraw}{character vector. Version(s) of the \emph{LibRaw}
-library used by \emph{rawpy} that have been validated to be compatible with the
+library that have been validated to be compatible with the
 specifications associated with this \code{embedded_metadata_sig}. Multiple
 values allow recording additional verified versions without overwriting
 previously validated ones. Use \code{NA} for the signature of JPEG files.}
 
+\item{validated_with_exiftool}{character vector. ExifTool version(s) that
+have been validated to be compatible with the specifications associated
+with this \code{embedded_metadata_sig}. Multiple values allow recording
+additional verified versions without overwriting previously validated ones.
+\code{NA} is allowed.}
+
+\item{metadata_profile}{Character vector. Identify how image metadata
+were extracted and named. Currently the only supported value is
+\code{"exiftool_g1_short_v1"}, which means ExifTool output with Family 1
+groups and short technical tag names. This field is stored explicitly
+so future extraction profiles can be distinguished safely.}
+
 \item{date}{optional \code{\link{Date}} object. Date when the specification was added
 to the registry. If \code{NULL}, the current system date is used automatically.}
 
-\item{file_sig}{optional character vector of length one.
-Intended to support workflow at the file retrieval stage. When provided,
-the registry validates the presence of the declared file
-signature at registration time.}
+\item{namespace}{character vector of length one. Lowercase identifier of the
+embedded metadata namespace (e.g. "exif", "xmp"). This value is descriptive
+and does not trigger any validation against \code{rules} at registration time.}
 }
 \value{
 A \link{hs_registry_entry} object with the \link{embedded_metadata_sig} object appended.
@@ -74,30 +81,46 @@ foo <- new_registry_entry(
   institution = "CIEFAP"
 )
 
-foo <- add_file_sig(
-  foo,
-  id = "raw",
-  extension = "NEF",
-  filename_pattern = "^DSCN[0-9]{4}$"
-)
-
+#Rules written by hand.
 foo <- add_embedded_metadata_sig(
   foo,
-  id = "exif_01",
-  namespace = "exif",
+  id = "exif_raw",
   dim = c(1288, 962),
-  validated_with_rawpy = "0.19.0",
   validated_with_libraw = "0.21.1",
+  validated_with_exiftool = "13.59",
   rules = list(
-    "Camera Model Name" = "E5700",
-    "Software" = "E5700v1.1",
-    "CFA Pattern" = "[Yellow,Cyan][Green,Magenta]",
-    "Compression" = "Uncompressed",
-    "Bits Per Sample" = "12",
-    "Quality" = "RAW"
-  ),
-  file_sig = "raw"
+    auto_focus = list(
+      group = "Composite",
+      tag = "AutoFocus",
+      label = "AutoFocus",
+      expected = "On"
+    ),
+    software = list(
+      group = "IFD0",
+      tag = "Software",
+      label = "Software",
+      expected = "E5700v1.1"
+    ),
+    digital_zoom = list(
+      group = "Nikon",
+      tag = "DigitalZoom",
+      label = "DigitalZoom",
+      expected = "1"
+    ),
+    quality = list(
+      group = "Nikon",
+      tag = "Quality",
+      label = "Quality",
+      expected = "RAW"
+    )
+  )
 )
+
+#Alternatively, rules from a metadata rules draft built with rcaiman-projects
+path <- system.file("external/nikon_coolpix5700_fce9_ciefap_snippet.R",
+                     package = "rcaiman.registry")
+source(path)
+metadata_rules
 
 foo
 summary(foo)

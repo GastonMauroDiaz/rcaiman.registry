@@ -19,14 +19,12 @@ configuration state at the moment of acquisition. To that end, three distinct
 but related descriptive domains are represented in a registry entry:
 \itemize{
 \item instrument metadata, which describes the physical acquisition system
-as a real-world object,
-\item file signature (\link{file_sig}), and
+as a real-world object, and
 \item embedded metadata signature (\link{embedded_metadata_sig}).
 }
 
 These domains are intentionally separated. A physical instrument exists
-independently of any particular file;  file-level properties describe how
-image data are materialized as files by the acquisition system; and embedded
+independently of any particular file, and embedded
 metadata act as a trace of a specific acquisition event.
 
 A registry entry must contain one instrument metadata entry, which defines the
@@ -77,7 +75,6 @@ The object is a named list:
 \seealso{
 \itemize{
 \item \code{\link[=new_registry_entry]{new_registry_entry()}} to create a new \link{hs_registry_entry} object with the mandatory element \code{instrument_metadata}
-\item \code{\link[=add_file_sig]{add_file_sig()}} to add a \link{file_sig} to an existing registry entry
 \item \code{\link[=add_embedded_metadata_sig]{add_embedded_metadata_sig()}} to add a \link{embedded_metadata_sig} to an existing registry entry
 \item \code{\link[=add_geometry_spec]{add_geometry_spec()}} to add a \link{geometry_spec} to an existing registry entry
 \item \code{\link[=add_radiometry_spec]{add_radiometry_spec()}} to add a \link{radiometry_spec} to an existing registry entry

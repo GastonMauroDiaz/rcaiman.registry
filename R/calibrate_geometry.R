@@ -49,15 +49,15 @@
 #' account. In practice, the latter is achieved by aligning the camera body with
 #' the orthogonal frame made by the quarter circle.
 #'
-#' Take a photo and transfer it to the computer, open it with ImageJ, and use
-#' the [point selection
-#' tool](https://imagej.net/ij/docs/guide/146-19.html#sec:Multi-point-Tool)
-#' to digitize the push pins, starting from the zenith push pin and not skipping
+#' Take a photo and transfer it to the computer. Use
+#' [rcaiman-projects](https://github.com/GastonMauroDiaz/rcaiman-projects) to
+#' create a point layer. This creates a csv that you can read with
+#' [rcaiman::read_points()]. Use the edit tool to add points on the the
+#' photographed push pins, starting from the zenith push pin and not skipping
 #' any shown push pin. End with an additional point where the image meets the
 #' surrounding black (or the last pixel in case there is not blackness because
 #' it is not a circular hemispherical image. There is no need to follow the line
-#' formed by the push pins). Then, use the dropdown menu Analyze>Measure to open
-#' the window Results. To obtain the CSV, use File>Save As...
+#' formed by the push pins).
 #' \if{html}{\figure{pushpinsImageJ.jpg}{options: style="display:block;margin:0 auto;max-width:90%;width:750px;"}}
 #' \if{latex}{\figure{pushpinsImageJ.jpg}}
 #' @note
@@ -68,18 +68,22 @@
 #' side. To calibrate 12 and 6 o'clock, do the same but with the camera in
 #' portrait mode.
 #'
-#' @param path_to_csv character vector. Path(s) to CSV file(s) created with the
-#'   ImageJ point selection tool. See *Note*.
+#' @param list_of_pts a list composed of `data.frame` with at least columns
+#'   `"row"` and `"col"`, giving raster coordinates of the digitized points.
 #' @param degree numeric vector of length one. Polynomial model degree.
 #'
 #' @return List with named elements:
 #' \describe{
 #'   \item{`ds`}{Data frame used to fit the model.}
 #'   \item{`model`}{`lm` object fitted to pixel distance vs. zenith angle.}
-#'   \item{`horizon_radius`}{Radius at 90 deg.}
+#'   \item{`horizon_radius`}{Predicted radial
+#'     distance (pixels) at 90 deg. Suitable for `horizon_radius` in
+#'    [add_geometry_spec()] with `model = "radial_projection"`.}
 #'   \item{`radial_projection_coef`}{Numeric vector of polynomial model coefficients
-#'     for predicting relative radius.}
-#'   \item{`zenith_col_row`}{Raster coordinates of the zenith push pin.}
+#'     for predicting relative radius. Suitable for `parameters` in
+#'     [add_geometry_spec()]  with `model = "radial_projection"`.}
+#'   \item{`zenith_col_row`}{Raster coordinates of the zenith push pin. Suitable
+#'    for `zenith_col_row` in [add_geometry_spec()] with `model = "radial_projection"`.}
 #'   \item{`max_theta`}{Maximum zenith angle (deg).}
 #'   \item{`max_theta_px`}{Distance in pixels between the zenith and the
 #'     maximum zenith angle.}
@@ -87,14 +91,16 @@
 #'
 #' @references \insertAllCited{}
 #'
-#' @seealso [validate_radial_projection_function()], [crosscalibrate_lens()], [extract_radiometry()]
+#' @seealso [validate_projection_function()], [crosscalibrate_geometry()], [calibrate_radiometry()]
 #'
 #'
 #' @export
 #'
 #' @examples
-#' path <- system.file("external/Results_calibration.csv", package = "rcaiman")
-#' calibration <- calibrate_lens(path)
+#' path <- c(system.file("external/a_DSCN7172.csv", package = "rcaiman.registry"),
+#'           system.file("external/b_DSCN7162.csv", package = "rcaiman.registry"))
+#' list_of_pts <- lapply(path, read_points)
+#' calibration <- calibrate_geometry(list_of_pts)
 #' coefficients(calibration$model)
 #' calibration$radial_projection_coef %>% signif(3)
 #' calibration$horizon_radius
@@ -109,21 +115,21 @@
 #' plot(calibration$ds)
 #' theta <- seq(0, pi/2, pi/180)
 #' lines(theta, .fp(theta, coefficients(calibration$model)))
-calibrate_lens <- function(path_to_csv, degree = 3) {
-  .check_vector(path_to_csv, "character")
-  .assert_file_exists(path_to_csv)
+calibrate_geometry <- function(list_of_pts, degree = 3) {
+  if (!is.list(list_of_pts)) {
+    stop("`list_of_pts` must be a list.")
+  }
   .check_vector(degree, "integerish", 1)
 
-  .fun <- function(path_to_csv) {
-    csv <- utils::read.csv(path_to_csv)
-    csv <- cbind(csv$X, csv$Y)
+  .fun <- function(list_of_pts) {
+    csv <- cbind(list_of_pts$col, list_of_pts$row)
     zenith_col_row <- csv[1,]
 
     # center in (0,0)
     csv[, 1] <- csv[, 1] - csv[1, 1]
     csv[, 2] <- csv[, 2] - csv[1, 2]
 
-    csv <- pracma::cart2pol(csv)
+    csv <- geometry::cart2pol(csv)
     px <- csv[, 2]
     max_theta_px <- px[length(px)]
     # remove the data point that is only useful for max_fox_px calculation
@@ -136,10 +142,10 @@ calibrate_lens <- function(path_to_csv, degree = 3) {
          zenith_col_row = zenith_col_row,
          max_theta_px = max_theta_px)
   }
-  if (length(path_to_csv) > 1) {
-    l <- Map(.fun, path_to_csv)
+  if (length(list_of_pts) > 1) {
+    l <- lapply(list_of_pts, .fun)
     ds <- l[[1]]$ds
-    for (i in 2:length(path_to_csv)) {
+    for (i in 2:length(list_of_pts)) {
       ds <- rbind(ds, l[[i]]$ds)
     }
     zenith_col_row <- Map(function(x) x$zenith_col_row, l) %>% unlist() %>%
@@ -150,7 +156,7 @@ calibrate_lens <- function(path_to_csv, degree = 3) {
               zenith_col_row = zenith_col_row,
               max_theta_px = max_theta_px)
   } else {
-    l <- .fun(path_to_csv)
+    l <- .fun(list_of_pts[[1]])
   }
   theta <- l$ds$theta
   px <- l$ds$px

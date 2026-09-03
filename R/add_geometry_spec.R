@@ -22,7 +22,7 @@
   .check_vector(notes, "character", 1, allow_null = TRUE)
   .check_vector(contact_information, "character", 1, allow_null = TRUE)
 
-  rcaiman::validate_radial_projection_function(parameters)
+  rcaiman::validate_projection_function(parameters)
 
   x <- list(
     id = id,
@@ -54,9 +54,9 @@
 #'   the model implemented in \pkg{rcaiman}.
 #' @param parameters numeric vector. Lens projection coefficients describing the
 #'   relationship between image radius and zenith angle. These coefficients
-#'   typically originate from [calibrate_lens()] or compatible
+#'   typically originate from [calibrate_geometry()] or compatible
 #'   procedures following the same conventions. The coefficients must pass
-#'   [rcaiman::validate_radial_projection_function()].
+#'   [rcaiman::validate_projection_function()].
 #' @param zenith_col_row numeric vector of length 2. Column and row coordinates
 #'   of the optical center (zenith) in pixel units following the conventions
 #'   used in \pkg{rcaiman}.
@@ -102,34 +102,22 @@
 #'   institution = "CIEFAP"
 #' )
 #'
-#' foo <- add_file_sig(
-#'   foo,
-#'   id = "raw",
-#'   extension = "NEF",
-#'   filename_pattern = "^DSCN[0-9]{4}$"
-#' )
+#' path <- system.file("external/nikon_coolpix5700_fce9_ciefap_snippet.R",
+#'                      package = "rcaiman.registry")
+#' source(path)
 #'
 #' foo <- add_embedded_metadata_sig(
 #'   foo,
-#'   id = "exif_01",
-#'   namespace = "exif",
+#'   id = "exif_raw",
 #'   dim = c(1288, 962),
-#'   validated_with_rawpy = "0.19.0",
 #'   validated_with_libraw = "0.21.1",
-#'   rules = list(
-#'     "Camera Model Name" = "E5700",
-#'     "Software" = "E5700v1.1",
-#'     "CFA Pattern" = "[Yellow,Cyan][Green,Magenta]",
-#'     "Compression" = "Uncompressed",
-#'     "Bits Per Sample" = "12",
-#'     "Quality" = "RAW"
-#'   ),
-#'   file_sig = "raw"
+#'   validated_with_exiftool = "13.59",
+#'   rules = metadata_rules
 #' )
 #'
 #' foo <- add_geometry_spec(
 #'   foo,
-#'   embedded_metadata_sig = "exif_01",
+#'   embedded_metadata_sig = "exif_raw",
 #'   id = "simple_method",
 #'   model = "radial_projection",
 #'   parameters = c(0.6380,  0.0307, -0.0200),

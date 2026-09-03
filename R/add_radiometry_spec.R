@@ -7,7 +7,6 @@
     data = NULL,
     cfa_pattern = NULL,
     spectral_mapping = NULL,
-    offset_value = NULL,
     date = NULL,
     notes = NULL,
     contact_information = NULL
@@ -59,11 +58,11 @@
       # --- data-driven mode attempted ---
       if (!is.null(data)) {
 
-        .check_flat_field_data(data)
+        .validate_flat_field_data(data)
 
-        if (model != "flat_field_trend_surface")
+        if (model != "ff_trend_surface")
           stop(
-            "`data` requires `model = \"flat_field_trend_surface\"`.",
+            "`data` requires `model = \"ff_trend_surface\"`.",
             call. = FALSE
           )
 
@@ -91,34 +90,6 @@
     }
   }
   if (type == "interpretive_constraint") {
-    if (!is.null(offset_value)) {
-      if (!is.list(offset_value)) {
-        stop("`offset_value` must be a list.")
-      }
-      nms <- names(offset_value)
-      if (is.null(nms) || any(nms == "")) {
-        stop("`offset_value` must be a named list with names representing ISO sensitivity values.")
-      }
-      aperture_num <- suppressWarnings(as.numeric(nms))
-      if (any(is.na(aperture_num))) {
-        stop("All `offset_value` names must be coercible to numeric ISO sensitivity values.")
-      }
-      if (any(!is.finite(aperture_num)) || any(aperture_num <= 0)) {
-        stop("ISO sensitivity values in `offset_value` must be positive and finite.")
-      }
-      if (any(duplicated(aperture_num))) {
-        stop("Duplicated ISO sensitivity values detected in `offset_value`.")
-      }
-      ok <- vapply(
-        offset_value,
-        function(x) is.numeric(x),
-        logical(1)
-      )
-      if (!all(ok)) {
-        stop("Each element of `offset_value` must be a numeric vector.")
-      }
-    }
-
     .check_cfa_pattern(cfa_pattern)
     .check_spectral_mapping(spectral_mapping, cfa_pattern)
   }
@@ -136,7 +107,6 @@
     data = data,
     cfa_pattern = cfa_pattern,
     spectral_mapping = spectral_mapping,
-    offset_value = offset_value,
     date = date,
     notes = notes,
     contact_information = contact_information
@@ -193,22 +163,23 @@
 #'   representing f-numbers (provide `"0"` to indicates that is applicable to
 #'   any f-number). This argument is intended for use with
 #'   `type = "flat_field_correction"`.
-#' @param data optional list. Dense flat-field data apt to build a flat-field
-#'   image. Intended for use with `type = "flat_field_correction"`. The expected
-#'   structure is:
+#' @param data optional named list. List names must be coercible to numeric
+#'   values representing f-numbers. Intended for use with `type =
+#'   "flat_field_correction"`. Each aperture must have dense flat-field data apt
+#'   to build a flat-field image.  The expected structure of each component is
+#'   another list with components:
 #'   \itemize{
-#'     \item `angles`: data frame with numeric columns `zenith` and
-#'     `azimuth` (in degrees), describing the angular sampling positions.
-#'     \item `relative_radiance`: named list of data frames. Each name must represent
-#'     a positive numeric aperture value (f-number). Each data frame must
-#'     contain at least one numeric column with the same number
-#'     of rows as `angles`.
+#'     \item `direction`: data frame with numeric columns `zen` and
+#'     `azi` (radian), describing the angular sampling positions.
+#'     \item `relative_radiance`: data frame with at least one numeric column
+#'     with the same number of rows as `direction`. Columns correspond to CFA
+#'     channels as it is conceptualized in [rcaiman::map_spectral_bands()]).
 #'   }
 #'   Angular values must be finite. Radiance values must be finite and
 #'   non-negative. This structure is intended for models that reconstruct the
 #'   flat-field surface from dense and well-distributed sampling points covering
 #'   the field of view. When `data` is supplied, `model` must be
-#'   `"flat_field_trend_surface"` and `parameters` must be `NULL`.
+#'   `"ff_trend_surface"` and `parameters` must be `NULL`.
 #' @param cfa_pattern character matrix of two rows by two columns. Declares the
 #'   ordered set of color filter elements used by the sensor. This argument must
 #'   be provided when `type = "interpretive_constraint"`. Values should
@@ -224,8 +195,6 @@
 #'   channels declared in `cfa_pattern`. Symbols used in the expression must
 #'   match channel labels in `cfa_pattern`. Only numeric constants and the
 #'   operators `+`, `-`, `*`, `/`, and parentheses are allowed.
-#' @param offset_value optional named list of black levels. List names must be coercible
-#'   to numeric values representing ISO sensitivity.
 #'
 #' @inheritParams add_embedded_metadata_sig
 #' @inheritParams add_geometry_spec
@@ -249,34 +218,22 @@
 #'   institution = "CIEFAP"
 #' )
 #'
-#' foo <- add_file_sig(
-#'   foo,
-#'   id = "raw",
-#'   extension = "NEF",
-#'   filename_pattern = "^DSCN[0-9]{4}$"
-#' )
+#' path <- system.file("external/nikon_coolpix5700_fce9_ciefap_snippet.R",
+#'                      package = "rcaiman.registry")
+#' source(path)
 #'
 #' foo <- add_embedded_metadata_sig(
 #'   foo,
-#'   id = "exif_01",
-#'   namespace = "exif",
+#'   id = "exif_raw",
 #'   dim = c(1288, 962),
-#'   validated_with_rawpy = "0.19.0",
 #'   validated_with_libraw = "0.21.1",
-#'   rules = list(
-#'     "Camera Model Name" = "E5700",
-#'     "Software" = "E5700v1.1",
-#'     "CFA Pattern" = "[Yellow,Cyan][Green,Magenta]",
-#'     "Compression" = "Uncompressed",
-#'     "Bits Per Sample" = "12",
-#'     "Quality" = "RAW"
-#'   ),
-#'   file_sig = "raw"
+#'   validated_with_exiftool = "13.59",
+#'   rules = metadata_rules
 #' )
 #'
 #' foo <- add_geometry_spec(
 #'   foo,
-#'   embedded_metadata_sig = "exif_01",
+#'   embedded_metadata_sig = "exif_raw",
 #'   id = "simple_method",
 #'   model = "radial_projection",
 #'   parameters = c(0.6380,  0.0307, -0.0200),
@@ -290,7 +247,7 @@
 #'
 #' foo <- add_radiometry_spec(
 #'   foo,
-#'   embedded_metadata_sig = "exif_01",
+#'   embedded_metadata_sig = "exif_raw",
 #'   geometry_spec = "simple_method",
 #'   id = "spectral_bands",
 #'   type = "interpretive_constraint",
@@ -299,17 +256,16 @@
 #'   spectral_mapping = list(Red = "(Yellow + Magenta)/2",
 #'                           Green = "Green",
 #'                           Blue = "Cyan"),
-#'   offset_value = list("100" = 0),
 #'   contact_information = "gastonmaurodiaz@gmail.com"
 #' )
 #'
 #' foo <- add_radiometry_spec(
 #'   foo,
-#'   embedded_metadata_sig = "exif_01",
+#'   embedded_metadata_sig = "exif_raw",
 #'   geometry_spec = "simple_method",
 #'   id = "simple_method",
 #'   type = "flat_field_correction",
-#'   model = "flat_field_simple_polynomial",
+#'   model = "ff_simple_polynomial",
 #'   parameters = list("5.0" = c(0.0638, -0.101)),
 #'   notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
 #'   contact_information = "gastonmaurodiaz@gmail.com"
@@ -318,32 +274,37 @@
 #'
 #' # Generate the data argument ----------------------------------------------
 #'
-#' gspec <- get_geometry_spec(foo,
-#'                           "exif_01", "simple_method")
-#' z <- zenith_image(gspec$horizon_radius*2, spec$parameters)
+#' spec <- get_geometry_spec(foo,
+#'                           "exif_raw", "simple_method")
+#' z <- zenith_image(spec$horizon_radius*2, spec$parameters)
 #' a <- azimuth_image(z)
 #' files <- system.file("external/flat_field_image.tif", package = "rcaiman.registry")
 #' sampling_points <- fibonacci_points(z, a, 10)
+#'
 #' fnumber <- c(5)
 #' radiance <- list()
 #' for (i in seq_along(files)) {
 #'   r <- read_caim(files[i])
-#'   sp <- lapply(1:4, function(i) extract_rr(r[[i]], z, a, sampling_points)$sky_points)
+#'   sp <- lapply(1:4,
+#'                function(u) {
+#'                  sp <- extract_dn(r[[u]], sampling_points)
+#'                  relative_radiance(sp, col_id = 5)$sky_points
+#'                }
+#'   )
 #'   df <- lapply(sp, function(x) x[,"rr"]) %>% data.frame()
 #'   names(df) <- names(r)
 #'   radiance[[i]] <- df
 #' }
 #' names(radiance) <- fnumber
-#' angles <- sp[[1]][, c("z", "a")]
-#' names(angles) <- c("zenith", "azimuth")
-#' data <- list(angles, radiance)
-#' names(data) <- c("angles", "relative_radiance")
+#' direction <- sp[[1]][, c("zen", "azi")]
+#' data <- list(direction, radiance)
+#' names(data) <- c("direction", "relative_radiance")
 #'
 #' # -------------------------------------------------------------------------
 #'
 #' foo <- add_radiometry_spec(
 #'   foo,
-#'   embedded_metadata_sig = "exif_01",
+#'   embedded_metadata_sig = "exif_raw",
 #'   geometry_spec = "simple_method",
 #'   id = "flat_field_generation",
 #'   type = "flat_field_correction",
@@ -368,7 +329,6 @@ add_radiometry_spec <- function(
     data = NULL,
     cfa_pattern = NULL,
     spectral_mapping = NULL,
-    offset_value = NULL,
     date = NULL,
     notes = NULL,
     contact_information = NULL
@@ -420,7 +380,6 @@ add_radiometry_spec <- function(
     data = data,
     cfa_pattern = cfa_pattern,
     spectral_mapping = spectral_mapping,
-    offset_value = offset_value,
     date = date,
     notes = notes,
     contact_information = contact_information

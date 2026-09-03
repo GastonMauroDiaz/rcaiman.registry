@@ -8,32 +8,15 @@ summary.hs_registry_entry <- function(object, ...) {
 
   components <- object[names(object) != "instrument_metadata"]
 
-  is_file     <- vapply(components, .is_file_sig, logical(1))
   is_embedded <- vapply(components, .is_embedded_metadata_sig, logical(1))
 
-  file_sig_ids <- sort(names(components)[is_file])
   embedded_ids <- sort(names(components)[is_embedded])
 
-  n_file_sig <- length(file_sig_ids)
   n_embedded <- length(embedded_ids)
 
   total_geometry   <- 0L
   total_radiometry <- 0L
 
-  # -------------------------------------------------------------------------
-  # File signatures
-  # -------------------------------------------------------------------------
-
-  cat(sprintf("File signatures (%d)\n", n_file_sig))
-  cat("-------------------\n")
-
-  if (n_file_sig > 0) {
-    for (id in file_sig_ids) {
-      cat(sprintf("* %s\n", id))
-    }
-  }
-
-  cat("\n")
 
   # -------------------------------------------------------------------------
   # Embedded metadata signatures

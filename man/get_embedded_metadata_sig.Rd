@@ -7,9 +7,6 @@
 get_embedded_metadata_sig(registry_entry, embedded_metadata_sig)
 }
 \arguments{
-\item{registry_entry}{\link{hs_registry_entry} object created with
-\code{\link[=new_registry_entry]{new_registry_entry()}}.}
-
 \item{embedded_metadata_sig}{character vector of length one. Identifier of
 embedded metadata signature.}
 }
@@ -32,26 +29,22 @@ foo <- new_registry_entry(
   institution = "CIEFAP"
 )
 
+path <- system.file("external/nikon_coolpix5700_fce9_ciefap_snippet.R",
+                     package = "rcaiman.registry")
+source(path)
+
 foo <- add_embedded_metadata_sig(
   foo,
-  id = "exif_01",
-  namespace = "exif",
+  id = "exif_raw",
   dim = c(1288, 962),
-  validated_with_rawpy = "0.19.0",
   validated_with_libraw = "0.21.1",
-  rules = list(
-    "Camera Model Name" = "E5700",
-    "Software" = "E5700v1.1",
-    "CFA Pattern" = "[Yellow,Cyan][Green,Magenta]",
-    "Compression" = "Uncompressed",
-    "Bits Per Sample" = "12",
-    "Quality" = "RAW"
-  )
+  validated_with_exiftool = "13.59",
+  rules = metadata_rules
 )
 
 foo <- add_geometry_spec(
   foo,
-  embedded_metadata_sig = "exif_01",
+  embedded_metadata_sig = "exif_raw",
   id = "simple_method",
   model = "radial_projection",
   parameters = c(0.6380,  0.0307, -0.0200),
@@ -65,7 +58,7 @@ foo <- add_geometry_spec(
 
 foo <- add_radiometry_spec(
   foo,
-  embedded_metadata_sig = "exif_01",
+  embedded_metadata_sig = "exif_raw",
   geometry_spec = "simple_method",
   id = "spectral_bands",
   type = "interpretive_constraint",
@@ -74,11 +67,11 @@ foo <- add_radiometry_spec(
   spectral_mapping = list(Red = "(Yellow + Magenta)/2",
                           Green = "Green",
                           Blue = "Cyan"),
-  offset_value = list("100" = 0),
   contact_information = "gastonmaurodiaz@gmail.com"
 )
 
 # -------------------------------------------------------------------------
 
-ems <- get_embedded_metadata_sig(foo, "exif_01")
+ems <- get_embedded_metadata_sig(foo, "exif_raw")
+ems
 }

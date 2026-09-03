@@ -1,6 +1,6 @@
 Package: rcaiman.registry
 Title: Instrument Registry for CAnopy IMage ANalysis
-Version: 0.1.0.9000
+Version: 0.1.4.9000
 Authors@R: 
     person("Gastón Mauro", "Díaz", , "gastonmaurodiaz@gmail.com", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-0362-8616"))
@@ -16,7 +16,7 @@ Depends:
 Imports:
     graphics,
     magrittr,
-    pracma,
+    geometry,
     Rdpack,
     stats,
     terra,

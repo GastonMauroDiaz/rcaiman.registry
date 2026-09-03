@@ -4,7 +4,7 @@
 #' Return a hierarchical index of the components stored in a
 #' registry entry.
 #'
-#' @inheritParams add_file_sig
+#' @inheritParams add_embedded_metadata_sig
 #'
 #' @return
 #' A named list describing the structural organization of the registry entry.
@@ -23,34 +23,22 @@
 #' institution = "CIEFAP"
 #' )
 #'
-#' foo <- add_file_sig(
-#'   foo,
-#'   id = "raw",
-#'   extension = "NEF",
-#'   filename_pattern = "^DSCN[0-9]{4}$"
-#' )
+#' path <- system.file("external/nikon_coolpix5700_fce9_ciefap_snippet.R",
+#'                      package = "rcaiman.registry")
+#' source(path)
 #'
 #' foo <- add_embedded_metadata_sig(
 #'   foo,
-#'   id = "exif_01",
-#'   namespace = "exif",
+#'   id = "exif_raw",
 #'   dim = c(1288, 962),
-#'   validated_with_rawpy = "0.19.0",
 #'   validated_with_libraw = "0.21.1",
-#'   rules = list(
-#'     "Camera Model Name" = "E5700",
-#'     "Software" = "E5700v1.1",
-#'     "CFA Pattern" = "[Yellow,Cyan][Green,Magenta]",
-#'     "Compression" = "Uncompressed",
-#'     "Bits Per Sample" = "12",
-#'     "Quality" = "RAW"
-#'   ),
-#'   file_sig = "raw"
+#'   validated_with_exiftool = "13.59",
+#'   rules = metadata_rules
 #' )
 #'
 #' foo <- add_geometry_spec(
 #'   foo,
-#'   embedded_metadata_sig = "exif_01",
+#'   embedded_metadata_sig = "exif_raw",
 #'   id = "simple_method",
 #'   model = "radial_projection",
 #'   parameters = c(0.6380,  0.0307, -0.0200),
@@ -64,7 +52,7 @@
 #'
 #' foo <- add_radiometry_spec(
 #'   foo,
-#'   embedded_metadata_sig = "exif_01",
+#'   embedded_metadata_sig = "exif_raw",
 #'   geometry_spec = "simple_method",
 #'   id = "spectral_bands",
 #'   type = "interpretive_constraint",
@@ -73,17 +61,16 @@
 #'   spectral_mapping = list(Red = "(Yellow + Magenta)/2",
 #'                           Green = "Green",
 #'                           Blue = "Cyan"),
-#'   offset_value = list("100" = 0),
 #'   contact_information = "gastonmaurodiaz@gmail.com"
 #' )
 #'
 #' foo <- add_radiometry_spec(
 #'   foo,
-#'   embedded_metadata_sig = "exif_01",
+#'   embedded_metadata_sig = "exif_raw",
 #'   geometry_spec = "simple_method",
 #'   id = "simple_method",
 #'   type = "flat_field_correction",
-#'   model = "flat_field_simple_polynomial",
+#'   model = "ff_simple_polynomial",
 #'   parameters = list("5.0" = c(0.0638, -0.101)),
 #'   notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
 #'   contact_information = "gastonmaurodiaz@gmail.com"
@@ -98,10 +85,8 @@ inspect_registry_index <- function(registry_entry) {
 
   components <- registry_entry[names(registry_entry) != "instrument_metadata"]
 
-  is_file     <- vapply(components, .is_file_sig, logical(1))
   is_embedded <- vapply(components, .is_embedded_metadata_sig, logical(1))
 
-  file_sig_ids <- names(components)[is_file]
   embedded_metadata_sig_ids <- names(components)[is_embedded]
 
   embedded_index <- vector("list", length(embedded_metadata_sig_ids))
@@ -137,7 +122,6 @@ inspect_registry_index <- function(registry_entry) {
   }
 
   list(
-    file_sig_ids = file_sig_ids,
     embedded_metadata_sig = embedded_index
   )
 }

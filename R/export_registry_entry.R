@@ -24,12 +24,9 @@
 #'   write or read the snapshot.
 #' @param interpretive_constraint optional character vector of length one.
 #'   Identifier of a [radiometry_spec] of type `interpretive_constraint`.
-#'   Provide `NULL` in the case of JPEG files or when the use of RAW metadata
-#'   via *rawpy* is preferred.
-#' @param flat_field_correction character vector of length one.
+#' @param flat_field_correction optional character vector of length one.
 #'   Identifier of a [radiometry_spec] of type `flat_field_correction`.
 #'
-#' @inheritParams add_file_sig
 #' @inheritParams get_embedded_metadata_sig
 #' @inheritParams get_geometry_spec
 #'
@@ -62,34 +59,22 @@
 #'   institution = "CIEFAP"
 #' )
 #'
-#' foo <- add_file_sig(
-#'   foo,
-#'   id = "raw",
-#'   extension = "NEF",
-#'   filename_pattern = "^DSCN[0-9]{4}$"
-#' )
+#' path <- system.file("external/nikon_coolpix5700_fce9_ciefap_snippet.R",
+#'                      package = "rcaiman.registry")
+#' source(path)
 #'
 #' foo <- add_embedded_metadata_sig(
 #'   foo,
-#'   id = "exif_01",
-#'   namespace = "exif",
+#'   id = "exif_raw",
 #'   dim = c(1288, 962),
-#'   validated_with_rawpy = "0.19.0",
 #'   validated_with_libraw = "0.21.1",
-#'   rules = list(
-#'     "Camera Model Name" = "E5700",
-#'     "Software" = "E5700v1.1",
-#'     "CFA Pattern" = "[Yellow,Cyan][Green,Magenta]",
-#'     "Compression" = "Uncompressed",
-#'     "Bits Per Sample" = "12",
-#'     "Quality" = "RAW"
-#'   ),
-#'   file_sig = "raw"
+#'   validated_with_exiftool = "13.59",
+#'   rules = metadata_rules
 #' )
 #'
 #' foo <- add_geometry_spec(
 #'   foo,
-#'   embedded_metadata_sig = "exif_01",
+#'   embedded_metadata_sig = "exif_raw",
 #'   id = "simple_method",
 #'   model = "radial_projection",
 #'   parameters = c(0.6380,  0.0307, -0.0200),
@@ -103,7 +88,7 @@
 #'
 #' foo <- add_radiometry_spec(
 #'   foo,
-#'   embedded_metadata_sig = "exif_01",
+#'   embedded_metadata_sig = "exif_raw",
 #'   geometry_spec = "simple_method",
 #'   id = "spectral_bands",
 #'   type = "interpretive_constraint",
@@ -112,28 +97,33 @@
 #'   spectral_mapping = list(Red = "(Yellow + Magenta)/2",
 #'                           Green = "Green",
 #'                           Blue = "Cyan"),
-#'   offset_value = list("100" = 0),
 #'   contact_information = "gastonmaurodiaz@gmail.com"
 #' )
 #'
 #' foo <- add_radiometry_spec(
 #'   foo,
-#'   embedded_metadata_sig = "exif_01",
+#'   embedded_metadata_sig = "exif_raw",
 #'   geometry_spec = "simple_method",
 #'   id = "simple_method",
 #'   type = "flat_field_correction",
-#'   model = "flat_field_simple_polynomial",
+#'   model = "ff_simple_polynomial",
 #'   parameters = list("5.0" = c(0.0638, -0.101)),
 #'   notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
 #'   contact_information = "gastonmaurodiaz@gmail.com"
 #' )
 #'
+#' # Export the snapshot -----------------------------------------------------
+#'
+#' \dontrun{
 #' export_registry_snapshot(foo,
-#'                          "exif_01",
+#'                          "exif_raw",
 #'                          "simple_method",
 #'                          "spectral_bands",
 #'                          "simple_method",
-#'                          "registry_snapshot.yaml")
+#'                          "inst/external/registry_snapshot.yaml")
+#' }
+#'
+#' # Read the snapshot -------------------------------------------------------
 #'
 #' read_registry_snapshot(system.file("external/registry_snapshot.yaml", package = "rcaiman.registry"))
 #'
@@ -141,15 +131,15 @@ export_registry_snapshot <- function(
     registry_entry,
     embedded_metadata_sig,
     geometry_spec,
-    interpretive_constraint,
-    flat_field_correction,
+    interpretive_constraint = NULL,
+    flat_field_correction = NULL,
     file
 ) {
    .check_registry_entry(registry_entry)
    .check_vector(embedded_metadata_sig, "character", 1)
    .check_vector(geometry_spec, "character", 1)
    .check_vector(interpretive_constraint, "character", 1, allow_null = TRUE)
-   .check_vector(flat_field_correction, "character", 1)
+   .check_vector(flat_field_correction, "character", 1, allow_null = TRUE)
    .check_vector(file, "character", 1)
 
 
@@ -174,21 +164,18 @@ export_registry_snapshot <- function(
   instrument_metadata <- registry_entry$instrument_metadata
 
   ems <- get_embedded_metadata_sig(registry_entry, embedded_metadata_sig)
-  fs <- if (!is.null(ems$file_sig)) {
-    get_file_sig(registry_entry, ems$file_sig)
-  } else {
+  spec <- get_geometry_spec(ems, geometry_spec)
+  rspec_ic <- if (!is.null(interpretive_constraint))
+    get_radiometry_spec(spec, interpretive_constraint)
+  else
     NULL
-  }
-  gspec <- get_geometry_spec(ems, geometry_spec)
-  if (!is.null(interpretive_constraint)) {
-    rspec_ic <- get_radiometry_spec(gspec, interpretive_constraint)
-  } else {
-    rspec_ic <- NULL
-  }
-  rspec_ffc <- get_radiometry_spec(gspec, flat_field_correction)
+  rspec_ffc <- if (!is.null(flat_field_correction))
+    get_radiometry_spec(spec, flat_field_correction)
+  else
+    NULL
 
   ems$geometry <- NULL
-  gspec$radiometry <- NULL
+  spec$radiometry <- NULL
 
   snapshot <- list(
     schema_version = 1,
@@ -199,31 +186,23 @@ export_registry_snapshot <- function(
     ),
     configuration = list(
       embedded_metadata_sig = ems$id,
-      geometry_spec = gspec$id,
+      geometry_spec = spec$id,
       interpretive_constraint = if (!is.null(interpretive_constraint))
         rspec_ic$id
       else
         NULL,
-      flat_field_correction = rspec_ffc$id
+      flat_field_correction = if (!is.null(flat_field_correction))
+        rspec_ffc$id
+      else
+        NULL
     ),
-    registry_entry = if (is.null(fs)) {
-      list(
+    registry_entry = list(
         instrument_metadata = instrument_metadata,
         embedded_metadata_sig = ems,
-        geometry_spec = gspec,
+        geometry_spec = spec,
         interpretive_constraint = rspec_ic,
         flat_field_correction = rspec_ffc
       )
-    } else {
-      list(
-        instrument_metadata = instrument_metadata,
-        file_sig = fs,
-        embedded_metadata_sig = ems,
-        geometry_spec = gspec,
-        interpretive_constraint = rspec_ic,
-        flat_field_correction = rspec_ffc
-      )
-    }
   )
 
   snapshot <- .sanitize_snapshot(snapshot)
@@ -244,9 +223,8 @@ read_registry_snapshot <- function(file) {
   entry <- snapshot$registry_entry
 
   im <- entry$instrument_metadata
-  fs <- entry$file_sig
   ems <- entry$embedded_metadata_sig
-  gspec <- entry$geometry_spec
+  spec <- entry$geometry_spec
   rspec_ic <- entry$interpretive_constraint
   rspec_ffc <- entry$flat_field_correction
 
@@ -258,9 +236,9 @@ read_registry_snapshot <- function(file) {
     if (is.null(data))
       return(NULL)
 
-    # --- angles ---
-    if (is.list(data$angles) && !is.data.frame(data$angles)) {
-      data$angles <- as.data.frame(data$angles, optional = TRUE)
+    # --- direction ---
+    if (is.list(data$direction) && !is.data.frame(data$direction)) {
+      data$direction <- as.data.frame(data$direction, optional = TRUE)
     }
 
     # --- radiance ---
@@ -283,40 +261,39 @@ read_registry_snapshot <- function(file) {
   }
   if (!is.null(rspec_ffc$data)) {
     rspec_ffc$data <- .reconstruct_flat_field_data(rspec_ffc$data)
-    .check_flat_field_data(rspec_ffc$data)
+    .validate_flat_field_data(rspec_ffc$data)
   }
 
 # -------------------------------------------------------------------------
 
-  class(gspec) <- "geometry_spec"
+  class(spec) <- "geometry_spec"
   class(ems) <- "embedded_metadata_sig"
-  class(rspec_ffc) <- "radiometry_spec"
 
   if (!is.null(rspec_ic)) {
     class(rspec_ic) <- "radiometry_spec"
+    #reconstruct matrix
+    rspec_ic$cfa_pattern <- matrix(rspec_ic$cfa_pattern, ncol = 2)
     rspec_ic_id <- rspec_ic$id
   }
 
-  if (!is.null(fs)) {
-    class(fs) <- "file_sig"
-    fs_id <- fs$id
+  if (!is.null(rspec_ffc)) {
+    class(rspec_ffc) <- "radiometry_spec"
+    rspec_ffc_id <- rspec_ffc$id
   }
 
   ems_id <- ems$id
-  gspec_id <- gspec$id
-  rspec_ffc_id <- rspec_ffc$id
+  gspec_id <- spec$id
 
-  gspec$radiometry <- list()
-  if (!is.null(rspec_ic)) gspec$radiometry[[rspec_ic_id]] <- rspec_ic
-  gspec$radiometry[[rspec_ffc_id]] <- rspec_ffc
+  spec$radiometry <- list()
+  if (!is.null(rspec_ic)) spec$radiometry[[rspec_ic_id]] <- rspec_ic
+  if (!is.null(rspec_ffc)) spec$radiometry[[rspec_ffc_id]] <- rspec_ffc
 
   ems$geometry <- list()
-  ems$geometry[[gspec_id]] <- gspec
+  ems$geometry[[gspec_id]] <- spec
 
   registry_entry <- list(
     instrument_metadata = im
   )
-  if (!is.null(fs)) registry_entry[[fs_id]] <- fs
   registry_entry[[ems_id]] <- ems
 
   class(registry_entry) <- "hs_registry_entry"

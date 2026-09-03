@@ -73,7 +73,7 @@ A \code{geometry_spec} is created via \code{\link[=add_geometry_spec]{add_geomet
 
 For \code{model = "radial_projection"}, structural constraints imposed by
 \pkg{rcaiman} are enforced at creation time, including validation of
-projection coefficients via \code{\link[rcaiman:validate_radial_projection_function]{rcaiman::validate_radial_projection_function()}}.
+projection coefficients via \code{\link[rcaiman:validate_projection_function]{rcaiman::validate_projection_function()}}.
 
 Additional contextual validation is performed when the specification is
 inserted into a registry. In particular, if \code{is_horizon_circle_clipped = FALSE}, the extrapolated horizon circle (90° zenith angle) must lie entirely
@@ -88,5 +88,5 @@ A \code{geometry_spec} may be retrieved using \code{\link[=get_geometry_spec]{ge
 }
 
 \seealso{
-\code{\link[=calibrate_lens]{calibrate_lens()}}, \code{\link[=crosscalibrate_lens]{crosscalibrate_lens()}}, \code{\link[=calc_diameter]{calc_diameter()}}
+\code{\link[=calibrate_geometry]{calibrate_geometry()}}, \code{\link[=crosscalibrate_geometry]{crosscalibrate_geometry()}}, \code{\link[=calc_diameter]{calc_diameter()}}
 }

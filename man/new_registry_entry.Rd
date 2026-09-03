@@ -96,6 +96,6 @@ foo
 summary(foo)
 }
 \seealso{
-\code{\link[=add_file_sig]{add_file_sig()}}, \code{\link[=add_embedded_metadata_sig]{add_embedded_metadata_sig()}}, \code{\link[=add_geometry_spec]{add_geometry_spec()}},
+\code{\link[=add_embedded_metadata_sig]{add_embedded_metadata_sig()}}, \code{\link[=add_geometry_spec]{add_geometry_spec()}},
 \code{\link[=add_radiometry_spec]{add_radiometry_spec()}}
 }

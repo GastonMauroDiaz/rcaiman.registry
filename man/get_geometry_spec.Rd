@@ -59,26 +59,22 @@ foo <- new_registry_entry(
   institution = "CIEFAP"
 )
 
+path <- system.file("external/nikon_coolpix5700_fce9_ciefap_snippet.R",
+                     package = "rcaiman.registry")
+source(path)
+
 foo <- add_embedded_metadata_sig(
   foo,
-  id = "exif_01",
-  namespace = "exif",
+  id = "exif_raw",
   dim = c(1288, 962),
-  validated_with_rawpy = "0.19.0",
   validated_with_libraw = "0.21.1",
-  rules = list(
-    "Camera Model Name" = "E5700",
-    "Software" = "E5700v1.1",
-    "CFA Pattern" = "[Yellow,Cyan][Green,Magenta]",
-    "Compression" = "Uncompressed",
-    "Bits Per Sample" = "12",
-    "Quality" = "RAW"
-  )
+  validated_with_exiftool = "13.59",
+  rules = metadata_rules
 )
 
 foo <- add_geometry_spec(
   foo,
-  embedded_metadata_sig = "exif_01",
+  embedded_metadata_sig = "exif_raw",
   id = "simple_method",
   model = "radial_projection",
   parameters = c(0.6380,  0.0307, -0.0200),
@@ -92,7 +88,7 @@ foo <- add_geometry_spec(
 
 foo <- add_radiometry_spec(
   foo,
-  embedded_metadata_sig = "exif_01",
+  embedded_metadata_sig = "exif_raw",
   geometry_spec = "simple_method",
   id = "spectral_bands",
   type = "interpretive_constraint",
@@ -101,15 +97,15 @@ foo <- add_radiometry_spec(
   spectral_mapping = list(Red = "(Yellow + Magenta)/2",
                           Green = "Green",
                           Blue = "Cyan"),
-  offset_value = list("100" = 0),
   contact_information = "gastonmaurodiaz@gmail.com"
 )
 
 # -------------------------------------------------------------------------
 
-gspec <- get_geometry_spec(foo, "exif_01", "simple_method")
-ems <- get_embedded_metadata_sig(foo, "exif_01")
-gspec <- get_geometry_spec(ems, "simple_method")
+spec <- get_geometry_spec(foo, "exif_raw", "simple_method")
+ems <- get_embedded_metadata_sig(foo, "exif_raw")
+spec <- get_geometry_spec(ems, "simple_method")
+spec
 }
 \seealso{
 \code{\link[=add_geometry_spec]{add_geometry_spec()}}, \code{\link[=get_embedded_metadata_sig]{get_embedded_metadata_sig()}}, \code{\link[=get_radiometry_spec]{get_radiometry_spec()}}

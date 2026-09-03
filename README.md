@@ -3,11 +3,7 @@
 
 # rcaiman.registry
 
-<!-- badges: start -->
-
-[![Lifecycle:
-experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
-<!-- badges: end -->
+    #> [1] "\\ifelse{html}{\\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\\strong{[Stable]}}"
 
 `rcaiman.registry` provides the infrastructure used by `rcaiman` to
 describe imaging systems used in canopy photography.
@@ -58,29 +54,38 @@ foo <- new_registry_entry(
   institution = "CIEFAP"
 )
 
-foo <- add_file_sig(
-  foo,
-  id = "raw",
-  extension = "NEF",
-  filename_pattern = "^DSCN[0-9]{4}$"
-)
-
 foo <- add_embedded_metadata_sig(
   foo,
   id = "exif_01",
-  namespace = "exif",
   dim = c(1288, 962),
-  validated_with_rawpy = "0.19.0",
   validated_with_libraw = "0.21.1",
+  validated_with_exiftool = "13.59",
   rules = list(
-    "Camera Model Name" = "E5700",
-    "Software" = "E5700v1.1",
-    "CFA Pattern" = "[Yellow,Cyan][Green,Magenta]",
-    "Compression" = "Uncompressed",
-    "Bits Per Sample" = "12",
-    "Quality" = "RAW"
-  ),
-  file_sig = "raw"
+    auto_focus = list(
+      group = "Composite",
+      tag = "AutoFocus",
+      label = "AutoFocus",
+      expected = "On"
+    ),
+    software = list(
+      group = "IFD0",
+      tag = "Software",
+      label = "Software",
+      expected = "E5700v1.1"
+    ),
+    digital_zoom = list(
+      group = "Nikon",
+      tag = "DigitalZoom",
+      label = "DigitalZoom",
+      expected = "1"
+    ),
+    quality = list(
+      group = "Nikon",
+      tag = "Quality",
+      label = "Quality",
+      expected = "RAW"
+    )
+  )
 )
 
 foo <- add_geometry_spec(
@@ -108,7 +113,6 @@ foo <- add_radiometry_spec(
   spectral_mapping = list(Red = "(Yellow + Magenta)/2",
                           Green = "Green",
                           Blue = "Cyan"),
-  offset_value = list("100" = 0),
   contact_information = "gastonmaurodiaz@gmail.com"
 )
 
@@ -118,7 +122,7 @@ foo <- add_radiometry_spec(
   geometry_spec = "simple_method",
   id = "simple_method",
   type = "flat_field_correction",
-  model = "flat_field_simple_polynomial",
+  model = "ff_simple_polynomial",
   parameters = list("5.0" = c(0.0638, -0.101)),
   notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
   contact_information = "gastonmaurodiaz@gmail.com"
@@ -150,7 +154,6 @@ foo
 #> 
 #> Registry contents
 #> -----------------
-#> File signatures: 1
 #> Embedded metadata signatures: 1
 #> 
 #> * exif_01
@@ -169,10 +172,6 @@ summary(foo)
 #> Registry entry - Summary
 #> ========================
 #> 
-#> File signatures (1)
-#> -------------------
-#> * raw
-#> 
 #> Embedded metadata signatures (1)
 #> ---------------------------------
 #> * exif_01
@@ -189,12 +188,10 @@ The `get_*()` helpers allow specifications to be retrieved easily for
 use in scripts that interact with `rcaiman`.
 
 ``` r
-fs <- get_file_sig(foo, "raw")
 ems <- get_embedded_metadata_sig(foo, "exif_01")
-fs <- get_file_sig(foo, ems$file_sig)
-gspec <- get_geometry_spec(foo, "exif_01", "simple_method")
-gspec <- get_geometry_spec(ems, "simple_method")
-rspec <- get_radiometry_spec(gspec, "spectral_bands")
+spec <- get_geometry_spec(foo, "exif_01", "simple_method")
+spec <- get_geometry_spec(ems, "simple_method")
+rspec <- get_radiometry_spec(spec, "spectral_bands")
 rspec <- get_radiometry_spec(foo, "exif_01", "simple_method", "spectral_bands")
 ```
 
@@ -233,8 +230,7 @@ rcaiman.registry → registry framework
 rcaiman.registry.data → registry entries maintained by the
 *rcaiman.registry* maintainer
 
-rcaiman.registry.<foo> → registry entries maintained by individual
-groups
+rcaiman.registry.foo → registry entries maintained by individual groups
 
 ## Extending the registry
 
@@ -246,7 +242,7 @@ Packages following this pattern would typically depend on
 `rcaiman.registry` and contain `hs_registry_entry` objects describing
 specific imaging systems. Alternatively, when resources for creating a
 full R package are not available, a simple repository containing YAML
-snapshot files can also be used.
+snapshot files may be deemed appropriate.
 
 These extension packages are encouraged to distribute:
 
@@ -259,5 +255,4 @@ Providing pairs of raw and preprocessed data enables testing,
 validation, and reproducibility of registry entries.
 
 GitHub repositories provide a convenient distribution channel for these
-packages, particularly given the size limitations imposed by CRAN for
-packages containing example datasets.
+packages, particularly given the size limitations imposed by CRAN.

@@ -1,73 +1,94 @@
+.validate_metadata_rules <- function(rules) {
+  if (!is.list(rules) || length(rules) == 0 || is.null(names(rules))) {
+    stop("`rules` must be a non-empty named list.", call. = FALSE)
+  }
+
+  ids <- names(rules)
+  if (anyDuplicated(ids)) {
+    stop("Duplicated rule identifiers are not allowed.", call. = FALSE)
+  }
+  if (any(!grepl("^[a-z][a-z0-9_]*$", ids))) {
+    stop(
+      "Rule identifiers must use snake_case and start with a letter.",
+      call. = FALSE
+    )
+  }
+
+  required <- c("group", "tag", "label", "expected")
+  keys <- character(length(rules))
+  for (i in seq_along(rules)) {
+    rule <- rules[[i]]
+    if (!is.list(rule) || !identical(sort(names(rule)), sort(required))) {
+      stop(
+        sprintf(
+          "Rule '%s' must contain exactly: group, tag, label, expected.",
+          ids[[i]]
+        ),
+        call. = FALSE
+      )
+    }
+    for (field in required) {
+      value <- rule[[field]]
+      if (!is.character(value) || length(value) != 1 || is.na(value) ||
+          !nzchar(value)) {
+        stop(
+          sprintf("Rule '%s' field '%s' must be non-empty text.", ids[[i]], field),
+          call. = FALSE
+        )
+      }
+      if (trimws(value) != value) {
+        stop(
+          sprintf(
+            "Rule '%s' field '%s' contains leading or trailing whitespace.",
+            ids[[i]], field
+          ),
+          call. = FALSE
+        )
+      }
+    }
+    keys[[i]] <- paste(rule$group, rule$tag, sep = ":")
+  }
+
+  if (anyDuplicated(keys)) {
+    duplicated_keys <- unique(keys[duplicated(keys)])
+    stop(
+      sprintf(
+        "Duplicated ExifTool group + tag keys are not allowed: %s",
+        paste(duplicated_keys, collapse = ", ")
+      ),
+      call. = FALSE
+    )
+  }
+
+  invisible(rules)
+}
+
 .new_embedded_metadata_sig <- function(
     id,
-    namespace,
     rules,
     dim,
-    validated_with_rawpy,
     validated_with_libraw,
-    date = NULL,
-    file_sig = NULL
+    validated_with_exiftool,
+    metadata_profile = "exiftool_g1_short_v1",
+    date = NULL
 ) {
-
   .check_vector(id, "character", 1)
   .assert_id(id)
-  .check_vector(namespace, "character", 1)
-  .assert_id(namespace)
   .check_vector(dim, "integerish", length = 2)
-  .check_vector(validated_with_rawpy, "character", allow_na = TRUE)
   .check_vector(validated_with_libraw, "character", allow_na = TRUE)
-  if (length(rules) == 0) {
-    stop("`rules` must contain at least one tag expectation.", call. = FALSE)
-  }
-  if (!is.list(rules) || is.null(names(rules))) {
-    stop(
-      "`rules` must be a named list of tag expectations.",
-      call. = FALSE
-    )
-  }
-  if (anyDuplicated(names(rules))) {
-
-    dup <- unique(names(rules)[duplicated(names(rules))])
-
-    stop(
-      sprintf(
-        "Duplicated rule names are not allowed: %s",
-        paste(dup, collapse = ", ")
-      ),
-      call. = FALSE
-    )
-
-  }
-  # check leading / trailing whitespace in values
-  nm <- names(rules)
-  bad <- vapply(
-    rules,
-    function(x) is.character(x) && grepl("^\\s|\\s$", x),
-    logical(1)
-  )
-
-  if (any(bad)) {
-    offenders <- sprintf("%s = '%s'", nm[bad], rules[bad])
-    stop(
-      sprintf(
-        "Rule values contain leading or trailing whitespace: %s",
-        paste(offenders, collapse = ", ")
-      ),
-      call. = FALSE
-    )
-  }
+  .check_vector(validated_with_exiftool, "character", allow_na = TRUE)
+  .assert_choice(metadata_profile, "exiftool_g1_short_v1")
+  .validate_metadata_rules(rules)
   .check_vector(date, "date", 1)
-  .check_vector(file_sig, "character", 1, allow_null = TRUE)
 
   x <- list(
     id = id,
-    namespace = namespace,
     dim = dim,
-    validated_with_rawpy = validated_with_rawpy,
     validated_with_libraw = validated_with_libraw,
+    validated_with_exiftool = validated_with_exiftool,
+    metadata_profile = metadata_profile,
     rules = rules,
     date = date,
-    file_sig = file_sig,
     geometry = list()
   )
   class(x) <- "embedded_metadata_sig"
@@ -89,25 +110,33 @@
 #' @param dim integer-like numeric vector of length two. Width and height in
 #'   pixels of the raster that have been validated to be compatible with the
 #'   specifications associated with this `embedded_metadata_sig`.
-#' @param validated_with_rawpy character vector. Version(s) of the *rawpy*
-#'   Python package (see [rcaiman::read_caim_raw()]) that have been validated
-#'   to be compatible with the specifications associated with this
-#'   `embedded_metadata_sig`. Multiple values allow recording additional
-#'   verified versions without overwriting previously validated ones. Use `NA`
-#'   for the signature of JPEG files.
 #' @param validated_with_libraw character vector. Version(s) of the *LibRaw*
-#'   library used by *rawpy* that have been validated to be compatible with the
+#'   library that have been validated to be compatible with the
 #'   specifications associated with this `embedded_metadata_sig`. Multiple
 #'   values allow recording additional verified versions without overwriting
 #'   previously validated ones. Use `NA` for the signature of JPEG files.
-#' @param rules named list composed of character vectors of length one. Expected
-#'   metadata values. Names must correspond to tag names.
+#' @param validated_with_exiftool character vector. ExifTool version(s) that
+#'   have been validated to be compatible with the specifications associated
+#'   with this `embedded_metadata_sig`. Multiple values allow recording
+#'   additional verified versions without overwriting previously validated ones.
+#'   `NA` is allowed.
+#' @param metadata_profile Character vector. Identify how image metadata
+#'   were extracted and named. Currently the only supported value is
+#'   `"exiftool_g1_short_v1"`, which means ExifTool output with Family 1
+#'   groups and short technical tag names. This field is stored explicitly
+#'   so future extraction profiles can be distinguished safely.
+#' @param rules named list of embedded metadata identity rules. Each rule name
+#'   is a stable snake_case identifier, and each rule must be a list with
+#'   exactly four character fields: `group`, `tag`, `label`, and `expected`.
+#'   `group` and `tag` identify the ExifTool metadata item, such as
+#'   `"IFD0"` and `"Model"`; `label` is a human-readable name; and
+#'   `expected` is the value that must match when validating an image.
+#'   Duplicated `group` + `tag` pairs are not allowed. These rules may be
+#'   written by hand or assembled from a metadata rules draft produced by
+#'   [rcaiman-projects](https://github.com/GastonMauroDiaz/rcaiman-projects) via
+#'    the "Build metadata rules..." action.
 #' @param date optional [`Date`] object. Date when the specification was added
 #'   to the registry. If `NULL`, the current system date is used automatically.
-#' @param file_sig optional character vector of length one.
-#'   Intended to support workflow at the file retrieval stage. When provided,
-#'   the registry validates the presence of the declared file
-#'   signature at registration time.
 #'
 #' @return
 #' A [hs_registry_entry] object with the [embedded_metadata_sig] object appended.
@@ -127,76 +156,81 @@
 #'   institution = "CIEFAP"
 #' )
 #'
-#' foo <- add_file_sig(
-#'   foo,
-#'   id = "raw",
-#'   extension = "NEF",
-#'   filename_pattern = "^DSCN[0-9]{4}$"
-#' )
-#'
+#' #Rules written by hand.
 #' foo <- add_embedded_metadata_sig(
 #'   foo,
-#'   id = "exif_01",
-#'   namespace = "exif",
+#'   id = "exif_raw",
 #'   dim = c(1288, 962),
-#'   validated_with_rawpy = "0.19.0",
 #'   validated_with_libraw = "0.21.1",
+#'   validated_with_exiftool = "13.59",
 #'   rules = list(
-#'     "Camera Model Name" = "E5700",
-#'     "Software" = "E5700v1.1",
-#'     "CFA Pattern" = "[Yellow,Cyan][Green,Magenta]",
-#'     "Compression" = "Uncompressed",
-#'     "Bits Per Sample" = "12",
-#'     "Quality" = "RAW"
-#'   ),
-#'   file_sig = "raw"
+#'     auto_focus = list(
+#'       group = "Composite",
+#'       tag = "AutoFocus",
+#'       label = "AutoFocus",
+#'       expected = "On"
+#'     ),
+#'     software = list(
+#'       group = "IFD0",
+#'       tag = "Software",
+#'       label = "Software",
+#'       expected = "E5700v1.1"
+#'     ),
+#'     digital_zoom = list(
+#'       group = "Nikon",
+#'       tag = "DigitalZoom",
+#'       label = "DigitalZoom",
+#'       expected = "1"
+#'     ),
+#'     quality = list(
+#'       group = "Nikon",
+#'       tag = "Quality",
+#'       label = "Quality",
+#'       expected = "RAW"
+#'     )
+#'   )
 #' )
+#'
+#' #Alternatively, rules from a metadata rules draft built with rcaiman-projects
+#' path <- system.file("external/nikon_coolpix5700_fce9_ciefap_snippet.R",
+#'                      package = "rcaiman.registry")
+#' source(path)
+#' metadata_rules
 #'
 #' foo
 #' summary(foo)
 add_embedded_metadata_sig <- function(
     registry_entry,
     id,
-    namespace,
     rules,
     dim,
-    validated_with_rawpy,
     validated_with_libraw,
-    date = NULL,
-    file_sig = NULL
+    validated_with_exiftool,
+    metadata_profile = "exiftool_g1_short_v1",
+    date = NULL
 ) {
-
   .check_registry_entry(registry_entry)
   if (is.null(date)) {
     date <- Sys.Date()
   }
   if (!is.null(registry_entry[[id]])) {
     stop(
-      sprintf("An embedded metadata signature with id '%s' already exists in this registry entry.", id),
+      sprintf(
+        "An embedded metadata signature with id '%s' already exists.",
+        id
+      ),
       call. = FALSE
     )
   }
-  .check_vector(file_sig, "character", 1, allow_null = TRUE)
-  if (!is.null(file_sig)) {
-    if (is.null(registry_entry[[file_sig]])) {
-      stop(
-        "The proposed file signature does not exist in this registry entry."
-      )
-    }
-    .check_file_sig(registry_entry[[file_sig]])
-  }
 
-  embedded_metadata_sig <- .new_embedded_metadata_sig(
+  registry_entry[[id]] <- .new_embedded_metadata_sig(
     id = id,
-    namespace = namespace,
-    dim = dim,
-    validated_with_rawpy = validated_with_rawpy,
-    validated_with_libraw = validated_with_libraw,
     rules = rules,
-    date = date,
-    file_sig = file_sig
+    dim = dim,
+    validated_with_libraw = validated_with_libraw,
+    validated_with_exiftool = validated_with_exiftool,
+    metadata_profile = metadata_profile,
+    date = date
   )
-
-  registry_entry[[id]] <- embedded_metadata_sig
   registry_entry
 }

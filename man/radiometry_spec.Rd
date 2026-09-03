@@ -53,8 +53,6 @@ when \code{type = "flat_field_correction"}).}
 when \code{type = "interpretive_constraint"}).}
 \item{spectral_mapping}{Named list of functions mapping sensor channels
 to target bands (applicable when \code{type = "interpretive_constraint"}).}
-\item{offset_value}{Optional named list of black level values (applicable
-when \code{type = "interpretive_constraint"}).}
 \item{date}{Date of specification declaration.}
 \item{notes}{Optional free-form documentation.}
 \item{contact_information}{Optional contact information for traceability.}
@@ -84,5 +82,5 @@ A \code{radiometry_spec} may be retrieved using \code{\link[=get_radiometry_spec
 }
 
 \seealso{
-\code{\link[=extract_radiometry]{extract_radiometry()}}
+\code{\link[=calibrate_radiometry]{calibrate_radiometry()}}
 }

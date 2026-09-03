@@ -47,21 +47,12 @@
   }
 }
 
-.check_file_sig <- function(x) {
-  if (!inherits(x, "file_sig")) {
-    stop(
-      "The file signature must be an object of class 'file_sig'.",
-      call. = FALSE
-    )
-  }
-}
-
 .check_flat_field_model <- function(model) {
   valid_flat_field_generators <- c(
-    "flat_field_free_form_polynomial",
-    "flat_field_lang2010",
-    "flat_field_simple_polynomial",
-    "flat_field_trend_surface"
+    "ff_free_form_polynomial",
+    "ff_lang2010",
+    "ff_simple_polynomial",
+    "ff_trend_surface"
   )
 
   .check_vector(model, "character", 1)

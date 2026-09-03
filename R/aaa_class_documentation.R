@@ -15,14 +15,12 @@
 #' but related descriptive domains are represented in a registry entry:
 #'   \itemize{
 #'     \item instrument metadata, which describes the physical acquisition system
-#'     as a real-world object,
-#'     \item file signature ([file_sig]), and
+#'     as a real-world object, and
 #'     \item embedded metadata signature ([embedded_metadata_sig]).
 #'   }
 #'
 #' These domains are intentionally separated. A physical instrument exists
-#' independently of any particular file;  file-level properties describe how
-#' image data are materialized as files by the acquisition system; and embedded
+#' independently of any particular file, and embedded
 #' metadata act as a trace of a specific acquisition event.
 #'
 #' A registry entry must contain one instrument metadata entry, which defines the
@@ -71,53 +69,12 @@
 #' @seealso
 #' \itemize{
 #' \item [new_registry_entry()] to create a new [hs_registry_entry] object with the mandatory element `instrument_metadata`
-#' \item [add_file_sig()] to add a [file_sig] to an existing registry entry
 #' \item [add_embedded_metadata_sig()] to add a [embedded_metadata_sig] to an existing registry entry
 #' \item [add_geometry_spec()] to add a [geometry_spec] to an existing registry entry
 #' \item [add_radiometry_spec()] to add a [radiometry_spec] to an existing registry entry
 #' }
 #'
 #' @name hs_registry_entry
-#' @docType class
-NULL
-
-#' File signature
-#'
-#' @description
-#' Represent a file signature used by \pkg{rcaiman} to facilitate
-#' file retrieval tasks.
-#'
-#' @section Definition:
-#' A `file_sig` describes image files as observed externally (e.g. filename
-#' structure, extension).
-#'
-#' @section Domain of application:
-#' A file signature acquires declared validity only within a
-#' [hs_registry_entry].
-#'
-#' @section Structure:
-#' A `file_sig` is an S3 object with the following fields:
-#'
-#' \describe{
-#'   \item{id}{Identifier (snake_case).}
-#'   \item{extension}{Expected file extension (e.g., `"NEF"`, `"CR2"`).}
-#'   \item{filename_pattern}{Optional regular expression describing expected basename structure.}
-#'   \item{date}{Date of signature declaration.}
-#' }
-#'
-#' @section Generation:
-#' A file signature is created via [add_file_sig()]. Registration is declarative
-#' and does not perform file matching.
-#'
-#' @section Retrieving:
-#' A `file_sig` may be retrieved using [get_file_sig()].
-#'
-#' @note
-#' Can be used independently to supply arguments to \pkg{rcaiman} core
-#' functions. However, its domain of validity remains tied as declared in
-#' *Domain of application*.
-#'
-#' @name file_sig
 #' @docType class
 NULL
 
@@ -135,7 +92,7 @@ NULL
 #' @section Domain of application:
 #' An embedded metadata signature acquires full meaning only within a
 #' [hs_registry_entry] via `intrument_metada`, which purpouse is to
-#' offers keys to identify the p physical acquisition system that can produce
+#' offers keys to identify the physical acquisition system that can produce
 #' such data.
 #'
 #' @section Structure:
@@ -146,12 +103,11 @@ NULL
 #'   \item{id}{Identifier (snake_case).}
 #'   \item{namespace}{Lowercase identifier of metadata namespace (e.g., `"exif"`).}
 #'   \item{dim}{Integer-like vector of length two specifying image width and height.}
-#'   \item{validated_with_rawpy}{Character vector of validated `rawpy` versions.}
 #'   \item{validated_with_libraw}{Character vector of validated `LibRaw` versions.}
+#'   \item{validated_with_exiftool}{Character vector of validated `ExifTool` versions.}
+#'   \item{metadata_profile}{Identifier of the metadata extraction contract.}
 #'   \item{rules}{Named list of expected tag–value pairs.}
 #'   \item{date}{Date of signature declaration.}
-#'   \item{file_sig}{Optional foreign key referencing a [file_sig] of the
-#'     [hs_registry_entry] object.}
 #'   \item{geometry}{Named list of [geometry_spec] objects.}
 #' }
 #'
@@ -234,7 +190,7 @@ NULL
 #'
 #' For `model = "radial_projection"`, structural constraints imposed by
 #' \pkg{rcaiman} are enforced at creation time, including validation of
-#' projection coefficients via [rcaiman::validate_radial_projection_function()].
+#' projection coefficients via [rcaiman::validate_projection_function()].
 #'
 #' Additional contextual validation is performed when the specification is
 #' inserted into a registry. In particular, if `is_horizon_circle_clipped =
@@ -251,7 +207,7 @@ NULL
 #' functions. However, its domain of validity remains tied as declared in
 #' *Domain of application*.
 #'
-#' @seealso [calibrate_lens()], [crosscalibrate_lens()], [calc_diameter()]
+#' @seealso [calibrate_geometry()], [crosscalibrate_geometry()], [calc_diameter()]
 #'
 #' @name geometry_spec
 #' @docType class
@@ -297,8 +253,6 @@ NULL
 #'    when `type = "interpretive_constraint"`).}
 #'   \item{spectral_mapping}{Named list of functions mapping sensor channels
 #'    to target bands (applicable when `type = "interpretive_constraint"`).}
-#'   \item{offset_value}{Optional named list of black level values (applicable
-#'    when `type = "interpretive_constraint"`).}
 #'   \item{date}{Date of specification declaration.}
 #'   \item{notes}{Optional free-form documentation.}
 #'   \item{contact_information}{Optional contact information for traceability.}
@@ -327,7 +281,7 @@ NULL
 #' functions. However, its domain of validity remains tied as declared in
 #' *Domain of application*.
 #'
-#' @seealso [extract_radiometry()]
+#' @seealso [calibrate_radiometry()]
 #'
 #' @name radiometry_spec
 #' @docType class

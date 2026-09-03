@@ -30,7 +30,7 @@ returns the horizon radius (i.e., the radius for \eqn{\theta} equal to 90 deg).
 When working with non-circular hemispherical photography, this function
 helps determine the diameter that a circular image would have if the
 equipment recorded the whole hemisphere, required to build the
-correct zenith image to use as input for \code{\link[rcaiman:expand_noncircular]{rcaiman::expand_noncircular()}}.
+correct zenith image to use as input for \code{\link[rcaiman:expand_non_circular]{rcaiman::expand_non_circular()}}.
 
 The required data (radius–angle pairs) can be obtained following the
 instructions in the
@@ -55,5 +55,5 @@ of \href{https://imagej.net/ij/}{ImageJ} can be used to measure the distance in
 pixels between points on the image. Draw a line and use the menu
 Analyze > Measure to obtain its length.
 
-For obtaining the projection of a new lens, see \code{\link[=calibrate_lens]{calibrate_lens()}}.
+For obtaining the projection of a new lens, see \code{\link[=calibrate_geometry]{calibrate_geometry()}}.
 }

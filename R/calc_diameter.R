@@ -10,7 +10,7 @@
 #' When working with non-circular hemispherical photography, this function
 #' helps determine the diameter that a circular image would have if the
 #' equipment recorded the whole hemisphere, required to build the
-#' correct zenith image to use as input for [expand_noncircular()].
+#' correct zenith image to use as input for [expand_non_circular()].
 #'
 #' The required data (radius–angle pairs) can be obtained following the
 #' instructions in the
@@ -34,7 +34,7 @@
 #' pixels between points on the image. Draw a line and use the menu
 #' Analyze > Measure to obtain its length.
 #'
-#' For obtaining the projection of a new lens, see [calibrate_lens()].
+#' For obtaining the projection of a new lens, see [calibrate_geometry()].
 #'
 #' @param projection_coef numeric vector. Polynomial coefficients of the lens
 #'   projection function (relative radius as a function of `theta`, radians).

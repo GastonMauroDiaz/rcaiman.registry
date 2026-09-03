@@ -43,7 +43,7 @@
 #'
 #' @return An object of class [hs_registry_entry].
 #'
-#' @seealso [add_file_sig()], [add_embedded_metadata_sig()], [add_geometry_spec()],
+#' @seealso [add_embedded_metadata_sig()], [add_geometry_spec()],
 #'   [add_radiometry_spec()]
 #'
 #' @export

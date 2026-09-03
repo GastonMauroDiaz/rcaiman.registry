@@ -74,13 +74,11 @@ print.hs_registry_entry <- function(x, ...) {
 
   idx <- inspect_registry_index(x)
 
-  n_file <- length(idx$file_sig_ids)
   ems_ids <- names(idx$embedded_metadata_sig)
   n_embedded <- length(ems_ids)
 
   cat("\nRegistry contents\n")
   cat("-----------------\n")
-  cat("File signatures: ", n_file, "\n", sep = "")
   cat("Embedded metadata signatures: ", n_embedded, "\n", sep = "")
 
   total_geometry <- 0
