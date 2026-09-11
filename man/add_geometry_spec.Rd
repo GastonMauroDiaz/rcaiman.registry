@@ -10,7 +10,7 @@ add_geometry_spec(
   id,
   model,
   parameters,
-  zenith_col_row,
+  snapped_zenith_coord,
   horizon_radius,
   is_horizon_circle_clipped,
   max_zenith_angle = NULL,
@@ -29,25 +29,29 @@ embedded metadata signature to which the geometry spec will be attached.}
 \item{id}{character vector of length one. Identifier of the geometry spec.
 Must use snake_case (lowercase letters, numbers, and underscores only)}
 
-\item{model}{character vector of length one. Declare \code{"radial_projection"} as
-the model implemented in \pkg{rcaiman}.}
+\item{model}{character vector of length one. Geometry model implemented in
+\pkg{rcaiman}. Either \code{"radial_projection"} or
+\code{"anisotropic_projection"}.}
 
-\item{parameters}{numeric vector. Lens projection coefficients describing the
-relationship between image radius and zenith angle. These coefficients
-typically originate from \code{\link[=calibrate_geometry]{calibrate_geometry()}} or compatible
-procedures following the same conventions. The coefficients must pass
-\code{\link[rcaiman:validate_projection_function]{rcaiman::validate_projection_function()}}.}
+\item{parameters}{Model parameters. For \code{"radial_projection"}, a numeric
+vector of coefficients describing the relationship between image radius
+and zenith angle, validated with
+\code{\link[rcaiman:validate_projection_function]{rcaiman::validate_projection_function()}}. For
+\code{"anisotropic_projection"}, a named list following
+the parameter contract documented in
+\code{\link[rcaiman:add_directions_from_model]{rcaiman::add_directions_from_model()}}.}
 
-\item{zenith_col_row}{numeric vector of length 2. Column and row coordinates
-of the optical center (zenith) in pixel units following the conventions
-used in \pkg{rcaiman}.}
+\item{snapped_zenith_coord}{integer-like numeric vector of length two.
+Continuous image coordinates of the snapped optical center in the original
+image frame, in the order \code{c(x, y_down)}. The coordinates identify the
+center of the nearest 2 x 2 cell window.}
 
 \item{horizon_radius}{integer-like numeric vector of length one. Radius of the
 hemispherical image in pixel units, measured from the optical center
-(\code{zenith_col_row}) to the image location corresponding to a zenith angle of
-90 deg (i.e. the horizon), and following the conventions used in \pkg{rcaiman}
-(i.e., \code{2 * horizon_radius} must be an even integer, see
-\link[rcaiman:zenith_image]{rcaiman::zenith_image}).}
+(\code{snapped_zenith_coord}) to the image location corresponding to a zenith
+angle of 90 deg (i.e. the horizon). For \code{"radial_projection"}, it follows
+the conventions used in \pkg{rcaiman}; \code{2 * horizon_radius} is the diameter
+supplied to \code{\link[rcaiman:zenith_image]{rcaiman::zenith_image()}}.}
 
 \item{is_horizon_circle_clipped}{logical vector of length one. Indicates
 whether the horizon circle (90 deg zenith angle), obtained via model
@@ -109,7 +113,7 @@ foo <- add_geometry_spec(
   id = "simple_method",
   model = "radial_projection",
   parameters = c(0.6380,  0.0307, -0.0200),
-  zenith_col_row = c(645, 494),
+  snapped_zenith_coord = c(645, 494),
   horizon_radius = 378,
   is_horizon_circle_clipped = FALSE,
   max_zenith_angle = 94.8,

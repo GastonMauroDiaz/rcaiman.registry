@@ -67,7 +67,7 @@
 #'   id = "simple_method",
 #'   model = "radial_projection",
 #'   parameters = c(0.6380,  0.0307, -0.0200),
-#'   zenith_col_row = c(645, 494),
+#'   snapped_zenith_coord = c(645, 494),
 #'   horizon_radius = 378,
 #'   is_horizon_circle_clipped = FALSE,
 #'   max_zenith_angle = 94.8,

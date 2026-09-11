@@ -67,7 +67,7 @@ calc_diameter <- function(projection_coef, radius, angle) {
     attr(diameter, "IQR") <- stats::IQR(diameters)
   }
 
-  if (tryCatch(!.check_vector(diameter, "evan_integerish", 1,
+  if (tryCatch(!.check_vector(diameter, "even_integerish", 1,
                               sign = "positive"), error = function(e) TRUE )) {
     diameter <- diameter + 1
   }

@@ -7,42 +7,78 @@
 crosscalibrate_geometry(
   pts_uncal,
   pts_cal,
-  zenith_col_row_uncal,
-  zenith_col_row_cal,
-  diameter_cal,
-  projection_coef,
-  degree = 3
+  model,
+  zenith_coord_uncal = NULL,
+  zenith_coord_cal = NULL,
+  diameter_cal = NULL,
+  projection_coef = NULL,
+  degree = 3,
+  width_uncal = NULL,
+  height_uncal = NULL,
+  atan_scale = NULL
 )
 }
 \arguments{
-\item{pts_uncal, pts_cal}{\code{data.frame} with at least columns \code{"row"} and
-\code{"col"}, giving raster coordinates of corresponding digitized points in the
-uncalibrated and calibrated images, respectively.}
+\item{pts_uncal, pts_cal}{\code{data.frame} objects with numeric columns \code{"x"} and
+\code{"y_down"}, giving continuous image coordinates of corresponding
+digitized points in the uncalibrated and calibrated images, respectively.
+Rows are paired by position and both objects must have the same number of
+rows. For \code{model = "anisotropic_projection"}, \code{pts_cal} must also contain
+numeric columns \code{"zen"} and \code{"azi"} in radians. Additional columns are
+ignored, except that additional columns in \code{pts_uncal} are preserved in
+the returned calibration data.}
 
-\item{zenith_col_row_uncal, zenith_col_row_cal}{numeric vectors of length two.
-Raster coordinates of the zenith in the uncalibrated and calibrated images,
-respectively. See \code{\link[=calc_zenith_col_row]{calc_zenith_col_row()}}.}
+\item{model}{character vector of length one. Model to fit for the
+uncalibrated camera. Either \code{"radial_projection"} or
+\code{"anisotropic_projection"}.}
+
+\item{zenith_coord_uncal, zenith_coord_cal}{numeric vectors of length two.
+Continuous image coordinates \code{c(x, y_down)} of the zenith in the
+uncalibrated and calibrated images, respectively. See
+\code{\link[=calc_zenith_coord]{calc_zenith_coord()}}. Required only for \code{"radial_projection"}.}
 
 \item{diameter_cal}{numeric vector of length one. Image diameter (pixels) of
-the calibrated camera.}
+the calibrated camera. Required only for \code{"radial_projection"}.}
 
 \item{projection_coef}{numeric vector. Lens projection coefficients of the
-calibrated camera.}
+calibrated camera. Required only for \code{"radial_projection"}.}
 
 \item{degree}{numeric vector of length one. Polynomial degree used to fit the
 lens projection of the uncalibrated camera (default 3).}
+
+\item{width_uncal, height_uncal}{integer-like numeric vectors of length one.
+Width and height in pixels of the uncalibrated image. Required only for
+\code{"anisotropic_projection"} and passed to \code{\link[rcaiman:add_image_polar]{rcaiman::add_image_polar()}}.}
+
+\item{atan_scale}{positive numeric vector of length one. Scale used in
+\code{atan(relative_radius / atan_scale)}. Required only for
+\code{"anisotropic_projection"}.}
 }
 \value{
-List with the following components:
+For \code{model = "radial_projection"}, a list with the following
+components:
 \describe{
 \item{\code{ds}}{\code{data.frame} with zenith angle (\code{theta}, radians) and radial
 distance (\code{px}, pixels) for the uncalibrated camera.}
 \item{\code{model}}{\code{lm} object fitted to radial distance as a polynomial
-function of zenith angle.}
+function of zenith angle. This is the fitted statistical model, not the
+model identifier supplied in the \code{model} argument.}
 \item{\code{horizon_radius}}{numeric vector of length one. Predicted radial
 distance (pixels) at 90 deg.}
 \item{\code{projection_coef}}{numeric vector. Polynomial coefficients normalized
 by \code{horizon_radius}.}
+}
+
+For \code{model = "anisotropic_projection"}, a list with the following
+components:
+\describe{
+\item{\code{ds}}{\code{data.frame} containing the uncalibrated continuous image
+coordinates, image-centered polar predictors, \code{atan_radius}, and the
+transferred \code{zen} and \code{azi} directions.}
+\item{\code{model}}{Named list containing the fitted \code{lm} objects \code{zen},
+\code{azi_sin}, and \code{azi_cos}.}
+\item{\code{parameters}}{Named list following the anisotropic projection
+contract documented in \code{\link[rcaiman:add_directions_from_model]{rcaiman::add_directions_from_model()}}.}
 }
 }
 \description{
@@ -52,8 +88,8 @@ calibrated camera photographed from the same location.
 \details{
 The calibrated and uncalibrated photographs must be taken with matching
 entrance pupils and aligned optical axes. Corresponding points digitized in
-both images are used to transfer zenith angles from the calibrated image to
-the uncalibrated image and fit a polynomial lens projection.
+both images are used to transfer viewing directions from the calibrated
+image to the uncalibrated image and fit its geometry model.
 
 This method is intended for cases where a camera calibrated with a method of
 higher accuracy than \code{\link[=calibrate_geometry]{calibrate_geometry()}} is available, or when several
@@ -62,7 +98,25 @@ cameras should be cross-calibrated against a common reference camera.
 Points must be digitized in tandem. The split-view feature in
 \href{https://github.com/GastonMauroDiaz/rcaiman-projects}{rcaiman-projects}
 facilitates this task. See \code{\link[=calibrate_geometry]{calibrate_geometry()}} for conceptual background.
+
+\code{model} identifies the model fitted for the uncalibrated camera. The
+\code{projection_coef} and \code{diameter_cal} arguments instead describe the known
+geometry of the calibrated camera.
+
+With \code{model = "radial_projection"}, the function preserves the historical
+radial cross-calibration: zenith angles are transferred from the calibrated
+radial projection and radial distances are fitted for the uncalibrated
+camera.
+
+With \code{model = "anisotropic_projection"}, \code{pts_cal} supplies the known
+directions corresponding to \code{pts_uncal}. The uncalibrated coordinates are
+prepared with \code{\link[rcaiman:add_image_polar]{rcaiman::add_image_polar()}} and three models are fitted:
+\code{zen} as a polynomial of transformed relative radius, and \code{sin(azi)} and
+\code{cos(azi)} as first-harmonic functions of image-plane angle. The resulting
+parameters follow the contract of \code{\link[rcaiman:add_directions_from_model]{rcaiman::add_directions_from_model()}}.
+The zenith component remains a function of radius alone; anisotropy refers
+to the fitted angular mapping rather than to zenith variation with azimuth.
 }
 \seealso{
-\code{\link[=calibrate_geometry]{calibrate_geometry()}}, \code{\link[=calc_zenith_col_row]{calc_zenith_col_row()}}
+\code{\link[=calibrate_geometry]{calibrate_geometry()}}, \code{\link[=calc_zenith_coord]{calc_zenith_coord()}}
 }

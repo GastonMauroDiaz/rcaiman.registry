@@ -154,10 +154,19 @@ NULL
 #'
 #' \describe{
 #'   \item{id}{Identifier (snake_case).}
-#'   \item{model}{Character vector identifying the geometric model used to
-#'   define the image-to-sphere transformation.}
-#'   \item{parameters}{Named list containing the parameters required
-#'   by the declared geometric model.}
+#'   \item{model}{Geometry model identifier: `"radial_projection"` or
+#'   `"anisotropic_projection"`.}
+#'   \item{parameters}{Numeric projection coefficient vector for
+#'   `"radial_projection"`, or the named parameter list defined by
+#'   [rcaiman::add_directions_from_model()] for
+#'   `"anisotropic_projection"`.}
+#'   \item{snapped_zenith_coord}{Integer-like numeric vector of length two.
+#'   Continuous image coordinates `c(x, y_down)` of the snapped optical center
+#'   in the original image frame.}
+#'   \item{horizon_radius}{Positive integer-like numeric value specifying the
+#'   radius corresponding to a 90 deg zenith angle.}
+#'   \item{is_horizon_circle_clipped}{Logical value indicating whether the
+#'   horizon circle is clipped by the original image frame.}
 #'   \item{max_zenith_angle}{Optional numeric value specifying the maximum
 #'   observable zenith angle (deg).}
 #'   \item{date}{Date of specification declaration.}
@@ -166,31 +175,19 @@ NULL
 #'   \item{radiometry}{Named list of [radiometry_spec] objects.}
 #' }
 #'
-#' For `model = "radial_projection"`, `parameters` must include:
-#'
-#' \describe{
-#'   \item{projection_coef}{Numeric vector defining the lens projection model.}
-#'   \item{zenith_col_row}{Numeric vector of length 2 specifying the optical
-#'   center in pixel coordinates.}
-#'   \item{horizon_radius}{Numeric value specifying the pixel radius
-#'   corresponding to 90° zenith angle.}
-#'   \item{is_horizon_circle_clipped}{Logical value indicating whether the
-#'   horizon circle is clipped by the image matrix.}
-#' }
-#'
-#' The specific radial projection model implemented in \pkg{rcaiman} is
-#' described in [rcaiman::calc_relative_radius()].
-#'
-#' Other model types may require different parameter structures, but none have
-#' been implemented yet in \pkg{rcaiman}.
+#' The radial projection model implemented in \pkg{rcaiman} is described in
+#' [rcaiman::calc_relative_radius()]. The anisotropic projection maps
+#' image-centered polar predictors to viewing directions as described in
+#' [rcaiman::add_directions_from_model()].
 #'
 #' @section Generation and validation:
 #'
 #' A `geometry_spec` is created via [add_geometry_spec()].
 #'
-#' For `model = "radial_projection"`, structural constraints imposed by
-#' \pkg{rcaiman} are enforced at creation time, including validation of
-#' projection coefficients via [rcaiman::validate_projection_function()].
+#' Structural constraints imposed by \pkg{rcaiman} are enforced at creation
+#' time. Radial parameters are evaluated with
+#' [rcaiman::validate_projection_function()]; anisotropic parameters follow
+#' the contract documented in [rcaiman::add_directions_from_model()].
 #'
 #' Additional contextual validation is performed when the specification is
 #' inserted into a registry. In particular, if `is_horizon_circle_clipped =

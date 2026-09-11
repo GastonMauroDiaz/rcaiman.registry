@@ -7,7 +7,7 @@
 calibrate_radiometry(
   calibration_data,
   is_horizon_circle_clipped,
-  zenith_col_row,
+  snapped_zenith_coord,
   horizon_radius,
   projection_coef,
   degree = 3,
@@ -31,8 +31,8 @@ images produced with \code{\link[rcaiman:split_cfa]{rcaiman::split_cfa()}} and i
 central crosses (the cross drawn on the paper covering the eBook screen,
 see \emph{Guidance}) as depicted in \code{images}.}
 \item{\code{sampling_points}}{Path to a point CSV readable by
-\code{\link[rcaiman:read_points]{rcaiman::read_points()}} and used to estimate radiometry around each query
-point. The feature "Create grid..." of  \emph{rcaiman-projects} is very
+\code{\link[rcaiman:read_points]{rcaiman::read_points()}} and used to estimate radiometry around each
+query point. The feature "Create grid..." of \emph{rcaiman-projects} is very
 convenient to obtain these points.}
 }
 The names of \code{calibration_data} are preserved in the returned dataset as a
@@ -41,21 +41,22 @@ example \code{"12"}, \code{"3"}, \code{"6"} and \code{"9"} (see \emph{Note}).}
 
 \item{is_horizon_circle_clipped}{logical vector of length one. Indicates
 whether the horizon circle (90 deg zenith angle), obtained via model
-extrapolation when necesary, is clipped by the image matrix. If FALSE, the
-geometry specification asserts that the complete horizon circle is fully
+extrapolation when necessary, is clipped by the image matrix. If
+\code{FALSE}, the geometry specification asserts that the complete horizon
+circle is fully
 included within the image extent.}
 
-\item{zenith_col_row}{numeric vector of length 2. Column and row coordinates
-of the optical center (zenith) in pixel units.}
+\item{snapped_zenith_coord}{integer-like numeric vector of length two.
+Continuous image coordinates of the snapped optical center in the original
+image frame, in the order \code{c(x, y_down)}. The coordinates identify the
+center of the nearest 2 x 2 cell window.}
 
-\item{horizon_radius}{integer-like numeric vector of length one. Radius of the
-hemispherical image in pixel units, measured from the optical center
-(\code{zenith_col_row}) to the image location corresponding to a zenith angle of
-90 deg (i.e. the horizon). It must be an even integer (see
-\link[rcaiman]{zenith_image}).}
+\item{horizon_radius}{positive integer-like numeric vector of length one.
+Radius of the processing geometry in cell units. Twice this value is the
+diameter supplied to \code{\link[rcaiman:zenith_image]{rcaiman::zenith_image()}}.}
 
-\item{projection_coef}{numeric vector. Polynomial coefficients defining
-the radial projection model evaluated in radians.}
+\item{projection_coef}{numeric vector. Polynomial coefficients defining the
+radial projection model evaluated in radians.}
 
 \item{degree}{integer-like vector of length one. Polynomial model degree.}
 
@@ -84,6 +85,17 @@ zenith angle and inside-camera relative radiance when the photographed target
 is of constant radiance.
 }
 \note{
+Point CSVs are persistent annotations in the original image frame. For a
+clipped horizon, images and points are transformed with
+\code{\link[rcaiman:expand_non_circular]{rcaiman::expand_non_circular()}} and
+\code{\link[rcaiman:expand_non_circular_points]{rcaiman::expand_non_circular_points()}}. Otherwise, both are cropped using
+\code{snapped_zenith_coord} and \code{horizon_radius}. Continuous coordinates are
+assigned to cells with \code{\link[rcaiman:y_down_from_y]{rcaiman::indices_from_coord()}} only after this common
+preprocessing, immediately before digital-number and direction extraction.
+
+The function does not verify that coordinates, image dimensions, and the
+supplied geometry describe the same acquisition frame.
+
 To calibrate different directions, think of the fisheye image as an analog
 clock. To calibrate 3 o'clock, attach the camera to the tripod in landscape
 mode while leaving the quarter-circle at the lens's right side. To calibrate

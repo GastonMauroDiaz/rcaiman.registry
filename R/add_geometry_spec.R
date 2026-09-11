@@ -2,7 +2,7 @@
     id,
     model,
     parameters,
-    zenith_col_row,
+    snapped_zenith_coord,
     horizon_radius,
     is_horizon_circle_clipped,
     max_zenith_angle,
@@ -12,22 +12,25 @@
 ) {
 
   .assert_id(id)
-  .assert_choice(model, c("radial_projection"))
+  .check_geometry_model(model, parameters)
   .check_vector(date, "date", 1)
-  .check_vector(parameters, "numeric")
-  .check_vector(zenith_col_row, "numeric", length = 2, sign = "positive")
-  .check_vector(horizon_radius, "even_integerish", length = 1)
-  .check_vector(is_horizon_circle_clipped, "logical")
+  .check_vector(
+    snapped_zenith_coord,
+    "integerish",
+    length = 2,
+    sign = "positive"
+  )
+  .check_vector(horizon_radius, "integerish", length = 1, sign = "positive")
+  .check_vector(is_horizon_circle_clipped, "logical", length = 1)
   .check_vector(max_zenith_angle, "numeric", length = 1, allow_null = TRUE, sign = "positive")
   .check_vector(notes, "character", 1, allow_null = TRUE)
   .check_vector(contact_information, "character", 1, allow_null = TRUE)
 
-  rcaiman::validate_projection_function(parameters)
-
   x <- list(
     id = id,
+    model = model,
     parameters = parameters,
-    zenith_col_row = zenith_col_row,
+    snapped_zenith_coord = snapped_zenith_coord,
     horizon_radius = horizon_radius,
     is_horizon_circle_clipped = is_horizon_circle_clipped,
     max_zenith_angle = max_zenith_angle,
@@ -50,22 +53,26 @@
 #'   Must use snake_case (lowercase letters, numbers, and underscores only)
 #' @param embedded_metadata_sig character vector of length one. Identifier of
 #'   embedded metadata signature to which the geometry spec will be attached.
-#' @param model character vector of length one. Declare `"radial_projection"` as
-#'   the model implemented in \pkg{rcaiman}.
-#' @param parameters numeric vector. Lens projection coefficients describing the
-#'   relationship between image radius and zenith angle. These coefficients
-#'   typically originate from [calibrate_geometry()] or compatible
-#'   procedures following the same conventions. The coefficients must pass
-#'   [rcaiman::validate_projection_function()].
-#' @param zenith_col_row numeric vector of length 2. Column and row coordinates
-#'   of the optical center (zenith) in pixel units following the conventions
-#'   used in \pkg{rcaiman}.
+#' @param model character vector of length one. Geometry model implemented in
+#'   \pkg{rcaiman}. Either `"radial_projection"` or
+#'   `"anisotropic_projection"`.
+#' @param parameters Model parameters. For `"radial_projection"`, a numeric
+#'   vector of coefficients describing the relationship between image radius
+#'   and zenith angle, validated with
+#'   [rcaiman::validate_projection_function()]. For
+#'   `"anisotropic_projection"`, a named list following
+#'   the parameter contract documented in
+#'   [rcaiman::add_directions_from_model()].
+#' @param snapped_zenith_coord integer-like numeric vector of length two.
+#'   Continuous image coordinates of the snapped optical center in the original
+#'   image frame, in the order `c(x, y_down)`. The coordinates identify the
+#'   center of the nearest 2 x 2 cell window.
 #' @param horizon_radius integer-like numeric vector of length one. Radius of the
 #'   hemispherical image in pixel units, measured from the optical center
-#'   (`zenith_col_row`) to the image location corresponding to a zenith angle of
-#'   90 deg (i.e. the horizon), and following the conventions used in \pkg{rcaiman}
-#'   (i.e., `2 * horizon_radius` must be an even integer, see
-#'   [rcaiman::zenith_image]).
+#'   (`snapped_zenith_coord`) to the image location corresponding to a zenith
+#'   angle of 90 deg (i.e. the horizon). For `"radial_projection"`, it follows
+#'   the conventions used in \pkg{rcaiman}; `2 * horizon_radius` is the diameter
+#'   supplied to [rcaiman::zenith_image()].
 #' @param is_horizon_circle_clipped logical vector of length one. Indicates
 #'   whether the horizon circle (90 deg zenith angle), obtained via model
 #'   extrapolation when necesary, is clipped by the image matrix. If `FALSE`,
@@ -121,7 +128,7 @@
 #'   id = "simple_method",
 #'   model = "radial_projection",
 #'   parameters = c(0.6380,  0.0307, -0.0200),
-#'   zenith_col_row = c(645, 494),
+#'   snapped_zenith_coord = c(645, 494),
 #'   horizon_radius = 378,
 #'   is_horizon_circle_clipped = FALSE,
 #'   max_zenith_angle = 94.8,
@@ -137,7 +144,7 @@ add_geometry_spec <- function(
     id,
     model,
     parameters,
-    zenith_col_row,
+    snapped_zenith_coord,
     horizon_radius,
     is_horizon_circle_clipped,
     max_zenith_angle = NULL,
@@ -174,7 +181,7 @@ add_geometry_spec <- function(
     id = id,
     model = model,
     parameters = parameters,
-    zenith_col_row = zenith_col_row,
+    snapped_zenith_coord = snapped_zenith_coord,
     horizon_radius = horizon_radius,
     is_horizon_circle_clipped = is_horizon_circle_clipped,
     max_zenith_angle = max_zenith_angle,
@@ -193,15 +200,15 @@ add_geometry_spec <- function(
       return(invisible(TRUE))
     }
 
-    zenith <- geometry_spec$zenith_col_row
+    zenith_coord <- geometry_spec$snapped_zenith_coord
     radius <- geometry_spec$horizon_radius
     dim    <- registry_entry[[embedded_metadata_sig]]$dim
 
     ## Bounds of the circle
-    left   <- zenith[1] - radius
-    right  <- zenith[1] + radius
-    top    <- zenith[2] - radius
-    bottom <- zenith[2] + radius
+    left   <- zenith_coord[1] - radius
+    right  <- zenith_coord[1] + radius
+    top    <- zenith_coord[2] - radius
+    bottom <- zenith_coord[2] + radius
 
     if (left < 0 || top < 0 || right > dim[1] || bottom > dim[2]) {
       msn <- paste0(

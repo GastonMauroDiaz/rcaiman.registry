@@ -1,4 +1,4 @@
-#' Calibrate lens
+#' Calibrate image geometry
 #'
 #' @description
 #' Calibrate a fisheye lens to derive the mathematical relationship between
@@ -68,22 +68,25 @@
 #' side. To calibrate 12 and 6 o'clock, do the same but with the camera in
 #' portrait mode.
 #'
-#' @param list_of_pts a list composed of `data.frame` with at least columns
-#'   `"row"` and `"col"`, giving raster coordinates of the digitized points.
+#' @param calibration_points_coord list of `data.frame` objects with numeric
+#'   columns `"x"` and `"y_down"`. Each data frame contains points digitized in
+#'   the original image frame. The first row identifies the zenith push pin.
 #' @param degree numeric vector of length one. Polynomial model degree.
 #'
 #' @return List with named elements:
 #' \describe{
 #'   \item{`ds`}{Data frame used to fit the model.}
 #'   \item{`model`}{`lm` object fitted to pixel distance vs. zenith angle.}
-#'   \item{`horizon_radius`}{Predicted radial
-#'     distance (pixels) at 90 deg. Suitable for `horizon_radius` in
-#'    [add_geometry_spec()] with `model = "radial_projection"`.}
+#'   \item{`horizon_radius`}{Continuous estimate of radial distance in pixels at
+#'     90 deg. Review and round this value before supplying it to
+#'     [add_geometry_spec()].}
 #'   \item{`radial_projection_coef`}{Numeric vector of polynomial model coefficients
 #'     for predicting relative radius. Suitable for `parameters` in
 #'     [add_geometry_spec()]  with `model = "radial_projection"`.}
-#'   \item{`zenith_col_row`}{Raster coordinates of the zenith push pin. Suitable
-#'    for `zenith_col_row` in [add_geometry_spec()] with `model = "radial_projection"`.}
+#'   \item{`zenith_coord`}{Continuous image coordinates `c(x, y_down)` of the
+#'     zenith push pin. Review and snap this estimate to the nearest integer
+#'     coordinate before supplying it as `snapped_zenith_coord` to
+#'     [add_geometry_spec()].}
 #'   \item{`max_theta`}{Maximum zenith angle (deg).}
 #'   \item{`max_theta_px`}{Distance in pixels between the zenith and the
 #'     maximum zenith angle.}
@@ -99,11 +102,16 @@
 #' @examples
 #' path <- c(system.file("external/a_DSCN7172.csv", package = "rcaiman.registry"),
 #'           system.file("external/b_DSCN7162.csv", package = "rcaiman.registry"))
-#' list_of_pts <- lapply(path, read_points)
-#' calibration <- calibrate_geometry(list_of_pts)
+#' calibration_points_coord <- lapply(path, read_points)
+#' calibration <- calibrate_geometry(calibration_points_coord)
 #' coefficients(calibration$model)
 #' calibration$radial_projection_coef %>% signif(3)
 #' calibration$horizon_radius
+#' calibration$zenith_coord
+#'
+#' # Constructing a geometry spec remains an explicit human decision.
+#' snapped_zenith_coord <- round(calibration$zenith_coord)
+#' horizon_radius <- round(calibration$horizon_radius)
 #'
 #' .fp <- function(theta, radial_projection_coef) {
 #'   x <- radial_projection_coef[1:5]
@@ -115,48 +123,59 @@
 #' plot(calibration$ds)
 #' theta <- seq(0, pi/2, pi/180)
 #' lines(theta, .fp(theta, coefficients(calibration$model)))
-calibrate_geometry <- function(list_of_pts, degree = 3) {
-  if (!is.list(list_of_pts)) {
-    stop("`list_of_pts` must be a list.")
+calibrate_geometry <- function(calibration_points_coord, degree = 3) {
+  if (!is.list(calibration_points_coord) ||
+      length(calibration_points_coord) == 0) {
+    stop("`calibration_points_coord` must be a non-empty list.")
   }
-  .check_vector(degree, "integerish", 1)
+  .check_vector(degree, "integerish", 1, sign = "positive")
 
-  .fun <- function(list_of_pts) {
-    csv <- cbind(list_of_pts$col, list_of_pts$row)
-    zenith_col_row <- csv[1,]
+  for (i in seq_along(calibration_points_coord)) {
+    points_name <- paste0("calibration_points_coord[[", i, "]]")
+    .check_points_coord(calibration_points_coord[[i]], points_name)
+    if (nrow(calibration_points_coord[[i]]) < 3) {
+      stop("`", points_name, "` must contain at least three rows.",
+           call. = FALSE)
+    }
+  }
+
+  .fun <- function(points_coord) {
+    coord <- cbind(points_coord$x, points_coord$y_down)
+    zenith_coord <- coord[1, ]
 
     # center in (0,0)
-    csv[, 1] <- csv[, 1] - csv[1, 1]
-    csv[, 2] <- csv[, 2] - csv[1, 2]
+    coord[, 1] <- coord[, 1] - coord[1, 1]
+    coord[, 2] <- coord[, 2] - coord[1, 2]
 
-    csv <- geometry::cart2pol(csv)
-    px <- csv[, 2]
+    # Only radial distance is used; the downward y axis does not change it.
+    polar <- geometry::cart2pol(coord)
+    px <- polar[, 2]
     max_theta_px <- px[length(px)]
-    # remove the data point that is only useful for max_fox_px calculation
+    # Remove the data point used only to calculate max_theta_px.
     px <- px[-length(px)]
 
     theta <- (seq(0, 90, 5)) * pi/180
     theta <- theta[1:length(px)] # because some lens would "see" less pushpins
     ds <- data.frame(theta, px)
     list(ds = ds,
-         zenith_col_row = zenith_col_row,
+         zenith_coord = zenith_coord,
          max_theta_px = max_theta_px)
   }
-  if (length(list_of_pts) > 1) {
-    l <- lapply(list_of_pts, .fun)
+  if (length(calibration_points_coord) > 1) {
+    l <- lapply(calibration_points_coord, .fun)
     ds <- l[[1]]$ds
-    for (i in 2:length(list_of_pts)) {
+    for (i in 2:length(calibration_points_coord)) {
       ds <- rbind(ds, l[[i]]$ds)
     }
-    zenith_col_row <- Map(function(x) x$zenith_col_row, l) %>% unlist() %>%
+    zenith_coord <- Map(function(x) x$zenith_coord, l) %>% unlist() %>%
       matrix(., ncol = 2, byrow = TRUE) %>% apply(., 2, stats::median)
     max_theta_px <- Map(function(x) x$max_theta_px, l) %>% unlist() %>%
       stats::median()
     l <- list(ds = ds,
-              zenith_col_row = zenith_col_row,
+              zenith_coord = zenith_coord,
               max_theta_px = max_theta_px)
   } else {
-    l <- .fun(list_of_pts[[1]])
+    l <- .fun(calibration_points_coord[[1]])
   }
   theta <- l$ds$theta
   px <- l$ds$px
@@ -171,8 +190,9 @@ calibrate_geometry <- function(list_of_pts, degree = 3) {
   list(ds = l$ds,
        model = fit,
        horizon_radius = horizon_radius,
-       radial_projection_coef = (coefficients(fit) / horizon_radius) %>% unname(),
-       zenith_col_row = l$zenith_col_row,
+       radial_projection_coef =
+         (coefficients(fit) / horizon_radius) %>% unname(),
+       zenith_coord = setNames(l$zenith_coord, c("x", "y_down")),
        max_theta = max_theta %>% unname(),
        max_theta_px = l$max_theta_px)
 }

@@ -2,13 +2,14 @@
 % Please edit documentation in R/calibrate_geometry.R
 \name{calibrate_geometry}
 \alias{calibrate_geometry}
-\title{Calibrate lens}
+\title{Calibrate image geometry}
 \usage{
-calibrate_geometry(list_of_pts, degree = 3)
+calibrate_geometry(calibration_points_coord, degree = 3)
 }
 \arguments{
-\item{list_of_pts}{a list composed of \code{data.frame} with at least columns
-\code{"row"} and \code{"col"}, giving raster coordinates of the digitized points.}
+\item{calibration_points_coord}{list of \code{data.frame} objects with numeric
+columns \code{"x"} and \code{"y_down"}. Each data frame contains points digitized in
+the original image frame. The first row identifies the zenith push pin.}
 
 \item{degree}{numeric vector of length one. Polynomial model degree.}
 }
@@ -17,14 +18,16 @@ List with named elements:
 \describe{
 \item{\code{ds}}{Data frame used to fit the model.}
 \item{\code{model}}{\code{lm} object fitted to pixel distance vs. zenith angle.}
-\item{\code{horizon_radius}}{Predicted radial
-distance (pixels) at 90 deg. Suitable for \code{horizon_radius} in
-\code{\link[=add_geometry_spec]{add_geometry_spec()}} with \code{model = "radial_projection"}.}
+\item{\code{horizon_radius}}{Continuous estimate of radial distance in pixels at
+90 deg. Review and round this value before supplying it to
+\code{\link[=add_geometry_spec]{add_geometry_spec()}}.}
 \item{\code{radial_projection_coef}}{Numeric vector of polynomial model coefficients
 for predicting relative radius. Suitable for \code{parameters} in
 \code{\link[=add_geometry_spec]{add_geometry_spec()}}  with \code{model = "radial_projection"}.}
-\item{\code{zenith_col_row}}{Raster coordinates of the zenith push pin. Suitable
-for \code{zenith_col_row} in \code{\link[=add_geometry_spec]{add_geometry_spec()}} with \code{model = "radial_projection"}.}
+\item{\code{zenith_coord}}{Continuous image coordinates \code{c(x, y_down)} of the
+zenith push pin. Review and snap this estimate to the nearest integer
+coordinate before supplying it as \code{snapped_zenith_coord} to
+\code{\link[=add_geometry_spec]{add_geometry_spec()}}.}
 \item{\code{max_theta}}{Maximum zenith angle (deg).}
 \item{\code{max_theta_px}}{Distance in pixels between the zenith and the
 maximum zenith angle.}
@@ -106,11 +109,16 @@ formed by the push pins).
 \examples{
 path <- c(system.file("external/a_DSCN7172.csv", package = "rcaiman.registry"),
           system.file("external/b_DSCN7162.csv", package = "rcaiman.registry"))
-list_of_pts <- lapply(path, read_points)
-calibration <- calibrate_geometry(list_of_pts)
+calibration_points_coord <- lapply(path, read_points)
+calibration <- calibrate_geometry(calibration_points_coord)
 coefficients(calibration$model)
 calibration$radial_projection_coef \%>\% signif(3)
 calibration$horizon_radius
+calibration$zenith_coord
+
+# Constructing a geometry spec remains an explicit human decision.
+snapped_zenith_coord <- round(calibration$zenith_coord)
+horizon_radius <- round(calibration$horizon_radius)
 
 .fp <- function(theta, radial_projection_coef) {
   x <- radial_projection_coef[1:5]

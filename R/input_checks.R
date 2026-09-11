@@ -1,34 +1,61 @@
 .assert_id <- function(id, name = deparse(substitute(id))) {
   if (!grepl("^[a-z0-9_]+$", id)) {
     stop(
-      sprintf("`%s`  must use snake_case and contain only lowercase letters, numbers, and underscores.", name)
+      sprintf(
+        "`%s`  must use snake_case and contain only lowercase letters, numbers, and underscores.",
+        name
+      )
     )
   }
 }
 
 .check_registry_entry <- function(registry_entry) {
   if (!inherits(registry_entry, "hs_registry_entry")) {
-    stop(
-      "`registry_entry` must be an object of class 'hs_registry_entry'.",
-      call. = FALSE
-    )
+    stop("`registry_entry` must be an object of class 'hs_registry_entry'.",
+         call. = FALSE)
   }
+}
+
+.check_geometry_model <- function(model, parameters) {
+  .assert_choice(
+    model,
+    c("radial_projection", "anisotropic_projection")
+  )
+
+  if (model == "radial_projection") {
+    .check_vector(parameters, "numeric")
+    # TODO (2026-09-04, bug)
+    # This validation is for USER INFORMATION ONLY via console. It is NOT
+    # meant to block the utilization of a registry_spec, but the messages do
+    # not show in console.
+    rcaiman::validate_projection_function(parameters)
+  } else {
+    .assert_anisotropic_projection_parameters(parameters)
+  }
+
+  invisible(TRUE)
 }
 
 .check_geometry_spec <- function(x) {
   if (!inherits(x, "geometry_spec")) {
-    stop(
-      "The geometry specification must be an object of class 'geometry_spec'.",
-      call. = FALSE
-    )
+    stop("The geometry specification must be an object of class 'geometry_spec'.",
+         call. = FALSE)
   }
   if (is.null(x$radiometry) || !is.list(x$radiometry)) {
-    stop(
-      "Radiometry container missing in geometry '",
-      x$id,
-      "'"
-    )
+    stop("Radiometry container missing in geometry '", x$id, "'")
   }
+
+  .check_geometry_model(x$model, x$parameters)
+
+  invisible(TRUE)
+}
+
+.check_points_coord <- function(x, name = deparse(substitute(x))) {
+  .check_columns(x, required_columns = c("x", "y_down"))
+  y_down <- x$y_down
+  x <- x$x
+  .check_vector(x, "numeric")
+  .check_vector(y_down, "numeric")
 }
 
 .check_embedded_metadata_sig <- function(x) {
@@ -69,4 +96,3 @@
 
   invisible(TRUE)
 }
-
