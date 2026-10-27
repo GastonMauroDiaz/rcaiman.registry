@@ -7,142 +7,85 @@
 \usage{
 export_registry_snapshot(
   registry_entry,
-  embedded_metadata_sig,
-  geometry_spec,
-  interpretive_constraint = NULL,
-  flat_field_correction = NULL,
+  signature,
+  band_spec,
+  geometry_spec = NULL,
+  radiometry_spec = NULL,
   file
 )
 
 read_registry_snapshot(file)
 }
 \arguments{
-\item{embedded_metadata_sig}{character vector of length one. Identifier of
-embedded metadata signature.}
+\item{registry_entry}{\link{hs_registry_entry} to export.}
 
-\item{geometry_spec}{Character vector of length one.
-Identifier of geometry specification.}
+\item{signature}{character vector of length one. Identifier
+of the selected metadata signature.}
 
-\item{interpretive_constraint}{optional character vector of length one.
-Identifier of a \link{radiometry_spec} of type \code{interpretive_constraint}.}
+\item{band_spec}{character vector of length one. Identifier of the selected
+band specification within that metadata signature.}
 
-\item{flat_field_correction}{optional character vector of length one.
-Identifier of a \link{radiometry_spec} of type \code{flat_field_correction}.}
+\item{geometry_spec}{optional character vector of length one. Identifier of
+the selected geometry within that band specification. If \code{NULL}, the
+snapshot ends at the band specification.}
 
-\item{file}{character vector of length one. Path to the YAML file used to
-write or read the snapshot.}
+\item{radiometry_spec}{optional character vector of length one.
+Identifier of a \link{radiometry_spec} under the selected geometry. If \code{NULL},
+the snapshot contains no radiometry specification. Requires \code{geometry_spec}.}
+
+\item{file}{character vector of length one. Path to the YAML file.}
 }
 \value{
-\code{export_registry_snapshot()} no return value. Called for side effects.
+\code{export_registry_snapshot()} invisibly returns \code{file}.
 
-\code{read_registry_snapshot()} returns an object of class \code{\link{hs_registry_entry}}.
+\code{read_registry_snapshot()} returns an \link{hs_registry_entry} with the selected
+metadata signature and band, plus geometry and radiometry when selected.
 }
 \description{
-Create and read portable snapshots of registry entries stored as YAML files.
+Write a selected registry branch to YAML and reconstruct it as a registry
+entry.
 }
 \details{
-A registry snapshot is a YAML representation of a specific subset of
-an \link{hs_registry_entry} object. It captures a single combination of
-\link{embedded_metadata_sig}, \link{geometry_spec}, and \link{radiometry_spec} with
-\verb{type = "interpretive_constraint} and with \code{type = "flat_field_correction"},
-together with intrument metadata and minimal metadata about the
-exporting environment.
+A snapshot contains instrument metadata, one \link{signature}, one
+\link{band_spec}, and optionally one \link{geometry_spec} and one flat-field
+\link{radiometry_spec}. A snapshot can end at the band specification, preserving
+its interpretation without selecting a geometry. Radiometry requires a
+selected geometry. Other branches are not exported.
 
-This mechanism provides a lightweight way to declare image geometric
-projection and radiometric correction without requiring the full registry
-infrastructure. In this way, the YAML file can act as the metadata of
-pre-processed images.
+The reader rebuilds the branch through the specification constructors,
+restoring dates, the CFA matrix, and model parameters. The resulting
+geometry can be passed directly to \code{\link[rcaiman:set_internal_geometry]{rcaiman::set_internal_geometry()}};
+radiometry parameters can be passed to their declared core evaluator.
 
-Moreover, \code{\link[=read_registry_snapshot]{read_registry_snapshot()}} reconstructs an \link{hs_registry_entry}
-object from a snapshot YAML file, making this format also useful to store and
-distribute single-branch registry estries.
+Snapshots use schema version 4. Earlier schemas are not supported. Numeric
+values are written with 17 significant digits. A CFA matrix is stored as
+column-major \code{values} and optional \code{dimnames}; its dimensions are always
+2 x 2. Spectral expressions are stored as text and are not evaluated by
+the reader.
 }
 \examples{
-
-# Build the object to export ----------------------------------------------
-
-foo <- new_registry_entry(
-  "Nikon_Coolpix5700.FCE9.CIEFAP",
-  body = "E5700",
-  body_manufacturer = "NIKON CORP",
-  body_serial = "7053067",
-  lens = "Zoom Nikkor ED 8.9-71.2mm 1:2.8-4.2",
-  lens_manufacturer = "NIKON CORP",
-  auxiliary_lens = "Fisheye Converter FC-E9 0.2x",
-  auxiliary_lens_manufacturer = "NIKON CORP",
-  institution = "CIEFAP"
+entry <- read_registry_snapshot(system.file(
+  "external/my_entry_v2.yaml", package = "rcaiman.registry"
+))
+summary(entry)
+file <- tempfile(fileext = ".yaml")
+export_registry_snapshot(
+  entry,
+  "raw",
+  "cygm",
+  "simple_method",
+  radiometry_spec = "simple_method",
+  file = file
 )
+restored <- read_registry_snapshot(file)
+summary(restored)
 
-path <- system.file("external/nikon_coolpix5700_fce9_ciefap_snippet.R",
-                     package = "rcaiman.registry")
-source(path)
-
-foo <- add_embedded_metadata_sig(
-  foo,
-  id = "exif_raw",
-  dim = c(1288, 962),
-  validated_with_libraw = "0.21.1",
-  validated_with_exiftool = "13.59",
-  rules = metadata_rules
-)
-
-foo <- add_geometry_spec(
-  foo,
-  embedded_metadata_sig = "exif_raw",
-  id = "simple_method",
-  model = "radial_projection",
-  parameters = c(0.6380,  0.0307, -0.0200),
-  snapped_zenith_coord = c(645, 494),
-  horizon_radius = 378,
-  is_horizon_circle_clipped = FALSE,
-  max_zenith_angle = 94.8,
-  notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
-  contact_information = "gastonmaurodiaz@gmail.com"
-)
-
-foo <- add_radiometry_spec(
-  foo,
-  embedded_metadata_sig = "exif_raw",
-  geometry_spec = "simple_method",
-  id = "spectral_bands",
-  type = "interpretive_constraint",
-  cfa_pattern = matrix(c("Green", "Yellow",
-                         "Magenta", "Cyan"), byrow = TRUE, ncol = 2),
-  spectral_mapping = list(Red = "(Yellow + Magenta)/2",
-                          Green = "Green",
-                          Blue = "Cyan"),
-  contact_information = "gastonmaurodiaz@gmail.com"
-)
-
-foo <- add_radiometry_spec(
-  foo,
-  embedded_metadata_sig = "exif_raw",
-  geometry_spec = "simple_method",
-  id = "simple_method",
-  type = "flat_field_correction",
-  model = "ff_simple_polynomial",
-  parameters = list("5.0" = c(0.0638, -0.101)),
-  notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
-  contact_information = "gastonmaurodiaz@gmail.com"
-)
-
-# Export the snapshot -----------------------------------------------------
-
-\dontrun{
-export_registry_snapshot(foo,
-                         "exif_raw",
-                         "simple_method",
-                         "spectral_bands",
-                         "simple_method",
-                         "inst/external/registry_snapshot.yaml")
-}
-
-# Read the snapshot -------------------------------------------------------
-
-read_registry_snapshot(system.file("external/registry_snapshot.yaml", package = "rcaiman.registry"))
-
+# Export band interpretation without geometry or radiometry.
+export_registry_snapshot(entry, "raw", "cygm", file = file)
+bands_only <- read_registry_snapshot(file)
+summary(bands_only)
+unlink(file)
 }
 \seealso{
-\code{\link[=add_embedded_metadata_sig]{add_embedded_metadata_sig()}}, \code{\link[=add_geometry_spec]{add_geometry_spec()}},
-\code{\link[=add_radiometry_spec]{add_radiometry_spec()}}
+\code{\link[=add_band_spec]{add_band_spec()}}, \code{\link[=add_geometry_spec]{add_geometry_spec()}}, \code{\link[=add_radiometry_spec]{add_radiometry_spec()}}
 }

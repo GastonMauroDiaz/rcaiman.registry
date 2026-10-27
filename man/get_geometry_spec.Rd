@@ -3,27 +3,34 @@
 \name{get_geometry_spec}
 \alias{get_geometry_spec}
 \alias{get_geometry_spec.hs_registry_entry}
-\alias{get_geometry_spec.embedded_metadata_sig}
+\alias{get_geometry_spec.signature}
+\alias{get_geometry_spec.band_spec}
 \title{Extract geometry specification}
 \usage{
 get_geometry_spec(x, ...)
 
-\method{get_geometry_spec}{hs_registry_entry}(x, embedded_metadata_sig, geometry_spec, ...)
+\method{get_geometry_spec}{hs_registry_entry}(x, signature, band_spec, geometry_spec, ...)
 
-\method{get_geometry_spec}{embedded_metadata_sig}(x, geometry_spec, ...)
+\method{get_geometry_spec}{signature}(x, band_spec, geometry_spec, ...)
+
+\method{get_geometry_spec}{band_spec}(x, geometry_spec, ...)
 }
 \arguments{
 \item{x}{Either:
 \itemize{
 \item A \link{hs_registry_entry}, or
-\item An \link{embedded_metadata_sig}.
+\item A \link{signature}, or
+\item A \link{band_spec}.
 }}
 
 \item{...}{Additional arguments (unused).}
 
-\item{embedded_metadata_sig}{Character vector of length one.
-Identifier of embedded metadata signature. Required when \code{x}
+\item{signature}{Character vector of length one.
+Identifier of signature. Required when \code{x}
 is a \code{hs_registry_entry}.}
+
+\item{band_spec}{character vector of length one. Band specification
+identifier, required unless \code{x} is a \link{band_spec}.}
 
 \item{geometry_spec}{Character vector of length one.
 Identifier of geometry specification.}
@@ -32,81 +39,20 @@ Identifier of geometry specification.}
 An object of class \link{geometry_spec}.
 }
 \description{
-Retrieve a geometry specification associated with an embedded
-metadata signature within a registry entry or not.
+Retrieve a geometry specification from its band interpretation,
+within a registry entry or retrieved separately.
 }
 \details{
 When \code{x} is a \link{hs_registry_entry}, the function navigates the hierarchy:
 
-\verb{registry_entry, embedded_metadata_sig, geometry_spec}
+\verb{registry_entry, signature, band_spec, geometry_spec}
 
-When \code{x} is an \link{embedded_metadata_sig}, the geometry specification
-is retrieved directly from its \code{geometry} container.
+From a \link{signature}, select a band specification first.
+From a \link{band_spec}, retrieve geometry directly from its \code{geometry} container.
 }
 \examples{
-
-# Build de object ---------------------------------------------------------
-
-foo <- new_registry_entry(
-  "Nikon_Coolpix5700.FCE9.CIEFAP",
-  body = "E5700",
-  body_manufacturer = "NIKON CORP",
-  body_serial = "7053067",
-  lens = "Zoom Nikkor ED 8.9-71.2mm 1:2.8-4.2",
-  lens_manufacturer = "NIKON CORP",
-  auxiliary_lens = "Fisheye Converter FC-E9 0.2x",
-  auxiliary_lens_manufacturer = "NIKON CORP",
-  institution = "CIEFAP"
-)
-
-path <- system.file("external/nikon_coolpix5700_fce9_ciefap_snippet.R",
-                     package = "rcaiman.registry")
-source(path)
-
-foo <- add_embedded_metadata_sig(
-  foo,
-  id = "exif_raw",
-  dim = c(1288, 962),
-  validated_with_libraw = "0.21.1",
-  validated_with_exiftool = "13.59",
-  rules = metadata_rules
-)
-
-foo <- add_geometry_spec(
-  foo,
-  embedded_metadata_sig = "exif_raw",
-  id = "simple_method",
-  model = "radial_projection",
-  parameters = c(0.6380,  0.0307, -0.0200),
-  snapped_zenith_coord = c(645, 494),
-  horizon_radius = 378,
-  is_horizon_circle_clipped = FALSE,
-  max_zenith_angle = 94.8,
-  notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
-  contact_information = "gastonmaurodiaz@gmail.com"
-)
-
-foo <- add_radiometry_spec(
-  foo,
-  embedded_metadata_sig = "exif_raw",
-  geometry_spec = "simple_method",
-  id = "spectral_bands",
-  type = "interpretive_constraint",
-  cfa_pattern = matrix(c("Green", "Yellow",
-                         "Magenta", "Cyan"), byrow = TRUE, ncol = 2),
-  spectral_mapping = list(Red = "(Yellow + Magenta)/2",
-                          Green = "Green",
-                          Blue = "Cyan"),
-  contact_information = "gastonmaurodiaz@gmail.com"
-)
-
-# -------------------------------------------------------------------------
-
-spec <- get_geometry_spec(foo, "exif_raw", "simple_method")
-ems <- get_embedded_metadata_sig(foo, "exif_raw")
-spec <- get_geometry_spec(ems, "simple_method")
-spec
+# See add_geometry_spec()
 }
 \seealso{
-\code{\link[=add_geometry_spec]{add_geometry_spec()}}, \code{\link[=get_embedded_metadata_sig]{get_embedded_metadata_sig()}}, \code{\link[=get_radiometry_spec]{get_radiometry_spec()}}
+\code{\link[=add_geometry_spec]{add_geometry_spec()}}, \code{\link[=get_band_spec]{get_band_spec()}}, \code{\link[=get_radiometry_spec]{get_radiometry_spec()}}
 }

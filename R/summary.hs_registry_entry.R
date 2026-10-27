@@ -1,83 +1,36 @@
 #' @export
 summary.hs_registry_entry <- function(object, ...) {
-
-  .check_registry_entry(object)
-
+  idx <- inspect_registry_index(object)$signature
   cat("\nRegistry entry - Summary\n")
   cat("========================\n\n")
-
-  components <- object[names(object) != "instrument_metadata"]
-
-  is_embedded <- vapply(components, .is_embedded_metadata_sig, logical(1))
-
-  embedded_ids <- sort(names(components)[is_embedded])
-
-  n_embedded <- length(embedded_ids)
-
-  total_geometry   <- 0L
-  total_radiometry <- 0L
-
-
-  # -------------------------------------------------------------------------
-  # Embedded metadata signatures
-  # -------------------------------------------------------------------------
-
-  cat(sprintf("Embedded metadata signatures (%d)\n", n_embedded))
+  cat(sprintf("Signatures (%d)\n", length(idx)))
   cat("---------------------------------\n")
-
-  for (ems in embedded_ids) {
-
-    em <- components[[ems]]
-    dim_val <- em$dim
-
+  for (ems in sort(names(idx))) {
+    em <- idx[[ems]]
     cat(sprintf("* %s\n", ems))
     cat("    Dimensions:\n")
-    cat(sprintf("      - %d x %d\n", dim_val[1], dim_val[2]))
-
-    geometry_ids <- character(0)
-
-    if (!is.null(em$geometry) && is.list(em$geometry)) {
-      geometry_ids <- sort(names(em$geometry))
-    }
-
-    n_geometry <- length(geometry_ids)
-    total_geometry <- total_geometry + n_geometry
-
-    cat(sprintf("    Geometry specifications (%d):\n", n_geometry))
-
-    if (n_geometry > 0) {
-
-      for (gs in geometry_ids) {
-
-        g <- em$geometry[[gs]]
-
-        radiometry_ids <- character(0)
-
-        if (!is.null(g$radiometry) && is.list(g$radiometry)) {
-          radiometry_ids <- sort(names(g$radiometry))
-        }
-
-        n_radiometry <- length(radiometry_ids)
-        total_radiometry <- total_radiometry + n_radiometry
-
-        cat(sprintf("      - %s\n", gs))
-
-        if (n_radiometry > 0) {
-          cat(sprintf("          Radiometry specifications (%d):\n", n_radiometry))
-          for (rs in radiometry_ids) {
-            cat(sprintf("            * %s\n", rs))
-          }
+    cat(sprintf("      - %d x %d\n", em$dim[1], em$dim[2]))
+    cat(sprintf("    Band specifications (%d):\n", length(em$band_spec_ids)))
+    if (!length(em$band_spec_ids)) cat("      none\n")
+    for (bs in sort(em$band_spec_ids)) {
+      band <- em$band_spec[[bs]]
+      cat(sprintf("      - %s\n", bs))
+      cat(sprintf("          Geometry specifications (%d):\n",
+                  length(band$geometry_spec_ids)))
+      if (!length(band$geometry_spec_ids)) cat("            none\n")
+      for (gs in sort(band$geometry_spec_ids)) {
+        rad_ids <- band$radiometry_spec_ids[[gs]]
+        cat(sprintf("            - %s\n", gs))
+        if (length(rad_ids)) {
+          cat(sprintf("                Radiometry specifications (%d):\n",
+                      length(rad_ids)))
+          for (rs in sort(rad_ids)) cat(sprintf("                  * %s\n", rs))
         } else {
-          cat("          Radiometry specifications: none\n")
+          cat("                Radiometry specifications: none\n")
         }
       }
-
-    } else {
-      cat("      none\n")
     }
-
     cat("\n")
   }
-
   invisible(object)
 }

@@ -1,3 +1,9 @@
+#' @details
+#' Registry entries support hemispherical representation of observations,
+#' including acquisitions that cover only part of the hemisphere. See
+#' [hs_registry_entry] for the definition of hemispherical imaging system
+#' used in this registry.
+#'
 #' @keywords internal
 "_PACKAGE"
 

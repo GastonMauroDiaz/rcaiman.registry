@@ -1,15 +1,18 @@
 #' Extract geometry specification
 #'
 #' @description
-#' Retrieve a geometry specification associated with an embedded
-#' metadata signature within a registry entry or not.
+#' Retrieve a geometry specification from its band interpretation,
+#' within a registry entry or retrieved separately.
 #'
 #' @param x Either:
 #'   - A [hs_registry_entry], or
-#'   - An [embedded_metadata_sig].
-#' @param embedded_metadata_sig Character vector of length one.
-#'   Identifier of embedded metadata signature. Required when `x`
+#'   - A [signature], or
+#'   - A [band_spec].
+#' @param signature Character vector of length one.
+#'   Identifier of signature. Required when `x`
 #'   is a `hs_registry_entry`.
+#' @param band_spec character vector of length one. Band specification
+#'   identifier, required unless `x` is a [band_spec].
 #' @param geometry_spec Character vector of length one.
 #'   Identifier of geometry specification.
 #' @param ... Additional arguments (unused).
@@ -20,120 +23,46 @@
 #' @details
 #' When `x` is a [hs_registry_entry], the function navigates the hierarchy:
 #'
-#' `registry_entry, embedded_metadata_sig, geometry_spec`
+#' `registry_entry, signature, band_spec, geometry_spec`
 #'
-#' When `x` is an [embedded_metadata_sig], the geometry specification
-#' is retrieved directly from its `geometry` container.
+#' From a [signature], select a band specification first.
+#' From a [band_spec], retrieve geometry directly from its `geometry` container.
 #'
 #' @seealso
-#' [add_geometry_spec()], [get_embedded_metadata_sig()], [get_radiometry_spec()]
+#' [add_geometry_spec()], [get_band_spec()], [get_radiometry_spec()]
 #'
 #' @export
 #'
 #' @examples
-#'
-#' # Build de object ---------------------------------------------------------
-#'
-#' foo <- new_registry_entry(
-#'   "Nikon_Coolpix5700.FCE9.CIEFAP",
-#'   body = "E5700",
-#'   body_manufacturer = "NIKON CORP",
-#'   body_serial = "7053067",
-#'   lens = "Zoom Nikkor ED 8.9-71.2mm 1:2.8-4.2",
-#'   lens_manufacturer = "NIKON CORP",
-#'   auxiliary_lens = "Fisheye Converter FC-E9 0.2x",
-#'   auxiliary_lens_manufacturer = "NIKON CORP",
-#'   institution = "CIEFAP"
-#' )
-#'
-#' path <- system.file("external/nikon_coolpix5700_fce9_ciefap_snippet.R",
-#'                      package = "rcaiman.registry")
-#' source(path)
-#'
-#' foo <- add_embedded_metadata_sig(
-#'   foo,
-#'   id = "exif_raw",
-#'   dim = c(1288, 962),
-#'   validated_with_libraw = "0.21.1",
-#'   validated_with_exiftool = "13.59",
-#'   rules = metadata_rules
-#' )
-#'
-#' foo <- add_geometry_spec(
-#'   foo,
-#'   embedded_metadata_sig = "exif_raw",
-#'   id = "simple_method",
-#'   model = "radial_projection",
-#'   parameters = c(0.6380,  0.0307, -0.0200),
-#'   snapped_zenith_coord = c(645, 494),
-#'   horizon_radius = 378,
-#'   is_horizon_circle_clipped = FALSE,
-#'   max_zenith_angle = 94.8,
-#'   notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
-#'   contact_information = "gastonmaurodiaz@gmail.com"
-#' )
-#'
-#' foo <- add_radiometry_spec(
-#'   foo,
-#'   embedded_metadata_sig = "exif_raw",
-#'   geometry_spec = "simple_method",
-#'   id = "spectral_bands",
-#'   type = "interpretive_constraint",
-#'   cfa_pattern = matrix(c("Green", "Yellow",
-#'                          "Magenta", "Cyan"), byrow = TRUE, ncol = 2),
-#'   spectral_mapping = list(Red = "(Yellow + Magenta)/2",
-#'                           Green = "Green",
-#'                           Blue = "Cyan"),
-#'   contact_information = "gastonmaurodiaz@gmail.com"
-#' )
-#'
-#' # -------------------------------------------------------------------------
-#'
-#' spec <- get_geometry_spec(foo, "exif_raw", "simple_method")
-#' ems <- get_embedded_metadata_sig(foo, "exif_raw")
-#' spec <- get_geometry_spec(ems, "simple_method")
-#' spec
+#' # See add_geometry_spec()
 get_geometry_spec <- function(x, ...) {
   UseMethod("get_geometry_spec")
 }
 
 #' @rdname get_geometry_spec
 #' @export
-get_geometry_spec.hs_registry_entry <- function(x,
-                                                embedded_metadata_sig,
-                                                geometry_spec,
-                                                ...) {
-
-  .check_registry_entry(x)
-  .check_vector(embedded_metadata_sig, "character", 1)
-  .check_vector(geometry_spec, "character", 1)
-
-  em <- get_embedded_metadata_sig(
-    registry_entry = x,
-    embedded_metadata_sig = embedded_metadata_sig
-  )
-
-  get_geometry_spec(em, geometry_spec = geometry_spec)
+get_geometry_spec.hs_registry_entry <- function(x, signature,
+                                                band_spec, geometry_spec, ...) {
+  band <- get_band_spec(x, signature, band_spec)
+  get_geometry_spec(band, geometry_spec = geometry_spec)
 }
 
 #' @rdname get_geometry_spec
 #' @export
-get_geometry_spec.embedded_metadata_sig <- function(x,
-                                                    geometry_spec,
-                                                    ...) {
+get_geometry_spec.signature <- function(x, band_spec,
+                                  geometry_spec, ...) {
+  band <- get_band_spec(x, band_spec = band_spec)
+  get_geometry_spec(band, geometry_spec = geometry_spec)
+}
 
-  .check_embedded_metadata_sig(x)
+#' @rdname get_geometry_spec
+#' @export
+get_geometry_spec.band_spec <- function(x, geometry_spec, ...) {
+  .check_band_spec(x)
   .check_vector(geometry_spec, "character", 1)
-
   if (!geometry_spec %in% names(x$geometry)) {
-    stop(
-      "Geometry specification '",
-      geometry_spec,
-      "' not found under embedded metadata '",
-      x$id,
-      "'"
-    )
+    stop("Geometry specification '", geometry_spec,
+         "' not found under band specification '", x$id, "'.", call. = FALSE)
   }
-
   x$geometry[[geometry_spec]]
 }

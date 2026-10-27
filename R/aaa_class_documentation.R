@@ -1,26 +1,38 @@
 #' Registry entry for a hemispherical imaging system
 #'
 #' @description
-#' Objects of class [hs_registry_entry] describe an image systems and its
-#' specifications according with the requirements of \pkg{rcaiman} core
+#' Objects of class [hs_registry_entry] describe an imaging system and its
+#' specifications according to the requirements of \pkg{rcaiman} core
 #' functions. They store structured data organized into descriptive and
 #' specification domains.
 #'
 #' @details
+#' In this registry, "hemispherical imaging system" refers to an imaging system
+#' characterized so that its observations can be mapped onto a hemispherical
+#' representation. The term describes the intended domain of representation,
+#' not the angular coverage of an individual acquisition. An acquisition may
+#' cover only part of the hemisphere, and partial coverage does not require
+#' additional acquisitions to complete it.
+#'
+#' The geometric specification describes directions relative to the optical
+#' axis. The orientation of each acquisition places those directions in the
+#' surrounding hemisphere. Mapping observations to a hemispherical raster is
+#' a separate processing choice.
+#'
 #' This is an S3 class implemented as a named list. Its purpose is to make
 #' explicit, inspectable, and auditable the geometric and radiometric
 #' assumptions applied during canopy image preprocessing. This, in turn,
 #' requires the correct identification of the photographic system and its
-#' configuration state at the moment of acquisition. To that end, three distinct
+#' configuration state at the moment of acquisition. To that end, two distinct
 #' but related descriptive domains are represented in a registry entry:
 #'   \itemize{
 #'     \item instrument metadata, which describes the physical acquisition system
 #'     as a real-world object, and
-#'     \item embedded metadata signature ([embedded_metadata_sig]).
+#'     \item signature ([signature]).
 #'   }
 #'
 #' These domains are intentionally separated. A physical instrument exists
-#' independently of any particular file, and embedded
+#' independently of any particular file, while an embedded
 #' metadata act as a trace of a specific acquisition event.
 #'
 #' A registry entry must contain one instrument metadata entry, which defines the
@@ -50,8 +62,8 @@
 #' such conditions is outside the scope of the registry entry and remains a
 #' matter of expert judgment.
 #'
-#' Registry entries can be distributed through R packages. The
-#' `rcaiman.registry.data` package provides a curated set of official entries,
+#' Registry entries can be distributed through R packages.
+#' \pkg{rcaiman.registry.data} provides a curated set of official entries,
 #' while users and research groups can create their own packages following,
 #' preferably, the convention `rcaiman.registry.<name>` to distribute custom
 #' registry entries.
@@ -59,8 +71,14 @@
 #' @section Structure:
 #' The object is a named list:
 #'
-#' \if{html}{\figure{hs_registry_entry.png}{options: style="display:block;margin:0 auto;max-width:100%;width:750px;"}}
-#' \if{latex}{\figure{hs_registry_entry.png}}
+#' \preformatted{
+#' hs_registry_entry
+#' +-- instrument_metadata (unique, mandatory element)
+#' +-- signature (1...n, indexed by a user-defined ID)
+#'     +-- bands (named container): band_spec (1...n, indexed by a user-defined ID)
+#'         +-- geometry (named container): geometry_spec (1...n, indexed by a user-defined ID)
+#'             +-- radiometry (named container): radiometry_spec (1...n, indexed by a user-defined ID)
+#' }
 #'
 #' @note
 #' Objects stored in a registry entry are assumed to be technically valid under their
@@ -69,7 +87,8 @@
 #' @seealso
 #' \itemize{
 #' \item [new_registry_entry()] to create a new [hs_registry_entry] object with the mandatory element `instrument_metadata`
-#' \item [add_embedded_metadata_sig()] to add a [embedded_metadata_sig] to an existing registry entry
+#' \item [add_signature()] to add a [signature] to an existing registry entry
+#' \item [add_band_spec()] to add a [band_spec] under a metadata signature
 #' \item [add_geometry_spec()] to add a [geometry_spec] to an existing registry entry
 #' \item [add_radiometry_spec()] to add a [radiometry_spec] to an existing registry entry
 #' }
@@ -78,134 +97,152 @@
 #' @docType class
 NULL
 
-#' Embedded metadata signature
+#' Signature
 #'
 #' @description
-#' Represent an embedded metadata signature used by \pkg{rcaiman} to
+#' Represent a signature used by \pkg{rcaiman} to
 #' identify the instruments that captured an image and their configuration
 #' state at acquisition time.
 #'
 #' @section Definition:
-#' An `embedded_metadata_sig` represents a configuration state of an
-#' instrument as expressed through embedded metadata.
+#' A `signature` declares the expected metadata values used to recognize a
+#' configuration state of an imaging system. Its rules are matched against
+#' embedded image metadata to identify the applicable specifications.
 #'
 #' @section Domain of application:
-#' An embedded metadata signature acquires full meaning only within a
-#' [hs_registry_entry] via `intrument_metada`, which purpouse is to
-#' offers keys to identify the physical acquisition system that can produce
+#' A signature acquires full meaning only within a
+#' [hs_registry_entry] via `instrument_metadata`, which identifies the
+#' physical acquisition system that can produce
 #' such data.
 #'
 #' @section Structure:
 #'
-#' An `embedded_metadata_sig` is an S3 object with the following fields:
+#' A `signature` is an S3 object with the following fields:
 #'
 #' \describe{
 #'   \item{id}{Identifier (snake_case).}
-#'   \item{namespace}{Lowercase identifier of metadata namespace (e.g., `"exif"`).}
 #'   \item{dim}{Integer-like vector of length two specifying image width and height.}
 #'   \item{validated_with_libraw}{Character vector of validated `LibRaw` versions.}
 #'   \item{validated_with_exiftool}{Character vector of validated `ExifTool` versions.}
 #'   \item{metadata_profile}{Identifier of the metadata extraction contract.}
 #'   \item{rules}{Named list of expected tag–value pairs.}
 #'   \item{date}{Date of signature declaration.}
-#'   \item{geometry}{Named list of [geometry_spec] objects.}
+#'   \item{bands}{Named list of [band_spec] objects.}
 #' }
 #'
 #' @section Generation and validation:
 #'
-#' An embedded metadata signature is created via [add_embedded_metadata_sig()].
+#' A signature is created via [add_signature()].
 #'
 #' Registration validates structural consistency (identifier format, rule
-#' structure, optional file signature linkage), but does not perform metadata
-#' matching at creation time.
+#' structure), but does not perform metadata matching at creation time.
 #'
 #' @section Retrieving:
-#' A `embedded_metadata_sig` may be retrieved using [get_embedded_metadata_sig()].
+#' A `signature` may be retrieved using [get_signature()].
 #'
 #' @note
 #' Can be used independently to supply arguments to \pkg{rcaiman} core
 #' functions. However, its domain of validity remains tied as declared in
 #' *Domain of application*.
 #'
-#' @name embedded_metadata_sig
+#' @name signature
+#' @docType class
+NULL
+
+#' Band specification
+#'
+#' @description
+#' Describe the source bands and their spectral interpretation under an
+#' signature.
+#'
+#' @details
+#' A band specification is an S3 named list with:
+#' \describe{
+#'   \item{id}{Identifier unique within the metadata signature.}
+#'   \item{cfa_pattern}{Optional 2 x 2 character matrix of source band identifiers.}
+#'   \item{spectral_mapping}{Optional named list of expressions deriving target
+#'     bands from source bands.}
+#'   \item{date}{Date of specification declaration.}
+#'   \item{notes}{Optional free-form documentation.}
+#'   \item{contact_information}{Optional contact information.}
+#'   \item{geometry}{Named list of [geometry_spec] objects.}
+#' }
+#'
+#' Several geometries can share a band interpretation. Radiometry specifications
+#' under each geometry inherit this context through their place in the tree.
+#' This hierarchy does not prescribe the processing order or select the bands
+#' to which a correction should be applied.
+#'
+#' Band interpretation is distinct from assigning bands to display channels.
+#' Omitting CFA and spectral mapping leaves those properties unspecified.
+#'
+#' @seealso [add_band_spec()], [get_band_spec()], [geometry_spec]
+#' @name band_spec
 #' @docType class
 NULL
 
 #' Geometry specification
 #'
 #' @description
-#' Represent a geometry specification defining the geometric reference frame
-#' used by \pkg{rcaiman} to interpret directional information from an image.
+#' Describe internal viewing directions under a declared band and metadata
+#' context.
 #'
-#' @section Definition:
-#' A `geometry_spec` is a formal declaration of the geometric transformation
-#' between image coordinates and spherical coordinates (zenith and azimuth)
-#' under a specific instrument configuration.
-#'
-#' @section Domain of application:
-#' A `geometry_spec` acquires declared validity only when associated with an
-#' [embedded_metadata_sig] within a [hs_registry_entry]. Its
-#' position in that hierarchy determines the metadata context under which the
-#' geometric interpretation is applicable.
+#' @details
+#' A `geometry_spec` is an S3 named list accepted directly as `geometry` by
+#' [rcaiman::set_internal_geometry()]. It describes off-axis angle and internal
+#' azimuth; acquisition orientation is supplied separately to
+#' [rcaiman::direction_image()].
 #'
 #' @section Structure:
-#'
-#' A `geometry_spec` is an S3 object with the following fields:
-#'
 #' \describe{
-#'   \item{id}{Identifier (snake_case).}
-#'   \item{model}{Geometry model identifier: `"radial_projection"` or
-#'   `"anisotropic_projection"`.}
-#'   \item{parameters}{Numeric projection coefficient vector for
-#'   `"radial_projection"`, or the named parameter list defined by
-#'   [rcaiman::add_directions_from_model()] for
-#'   `"anisotropic_projection"`.}
-#'   \item{snapped_zenith_coord}{Integer-like numeric vector of length two.
-#'   Continuous image coordinates `c(x, y_down)` of the snapped optical center
-#'   in the original image frame.}
-#'   \item{horizon_radius}{Positive integer-like numeric value specifying the
-#'   radius corresponding to a 90 deg zenith angle.}
-#'   \item{is_horizon_circle_clipped}{Logical value indicating whether the
-#'   horizon circle is clipped by the original image frame.}
-#'   \item{max_zenith_angle}{Optional numeric value specifying the maximum
-#'   observable zenith angle (deg).}
+#'   \item{id}{Identifier unique within its [band_spec].}
+#'   \item{model}{Either `"radial_projection"` or `"anisotropic_projection"`.}
+#'   \item{parameters}{Model coefficients following
+#'     [rcaiman::set_internal_geometry()].}
+#'   \item{center_of_vision}{Snapped optical center in continuous image
+#'     coordinates `c(x, y_down)`.}
+#'   \item{normalization_radius}{Radius in pixels at the normalization angle.
+#'     May be fractional. Required for the radial model.}
+#'   \item{normalization_angle}{Off-axis angle in degrees where the radial
+#'     polynomial equals one. Required for the radial model.}
+#'   \item{max_off_axis_angle}{Radial calculation limit in degrees,
+#'     defaulting to 90.}
+#'   \item{max_observed_off_axis_angle}{Optional maximum off-axis angle in
+#'     degrees represented by observations used for geometric calibration.}
 #'   \item{date}{Date of specification declaration.}
 #'   \item{notes}{Optional free-form documentation.}
-#'   \item{contact_information}{Optional contact information for traceability.}
+#'   \item{contact_information}{Optional contact information.}
 #'   \item{radiometry}{Named list of [radiometry_spec] objects.}
 #' }
 #'
-#' The radial projection model implemented in \pkg{rcaiman} is described in
-#' [rcaiman::calc_relative_radius()]. The anisotropic projection maps
-#' image-centered polar predictors to viewing directions as described in
-#' [rcaiman::add_directions_from_model()].
+#' The anisotropic model ignores the normalization fields and calculation
+#' limit. Its parameter names are `off_axis_coef`,
+#' `sin_internal_azimuth_coef`, `cos_internal_azimuth_coef`, and `atan_scale`.
+#' Both models and their equations are documented in
+#' [rcaiman::set_internal_geometry()].
+#'
+#' @section Domain of application:
+#' The specification belongs to a [band_spec] under an
+#' [signature]. Its coordinates refer to the image grid whose
+#' `dim` is declared in that metadata signature. For the anisotropic model,
+#' these dimensions also define the semidiagonal used by the model.
+#'
+#' The maximum observed angle records experimental coverage. It is independent
+#' of the normalization reference and the calculation limit, and does not
+#' establish a model accuracy guarantee or a mask of measured pixels.
 #'
 #' @section Generation and validation:
-#'
-#' A `geometry_spec` is created via [add_geometry_spec()].
-#'
-#' Structural constraints imposed by \pkg{rcaiman} are enforced at creation
-#' time. Radial parameters are evaluated with
-#' [rcaiman::validate_projection_function()]; anisotropic parameters follow
-#' the contract documented in [rcaiman::add_directions_from_model()].
-#'
-#' Additional contextual validation is performed when the specification is
-#' inserted into a registry. In particular, if `is_horizon_circle_clipped =
-#' FALSE`, the extrapolated horizon circle (90° zenith angle) must lie entirely
-#' within the image dimensions (`dim`) declared in the associated
-#' [embedded_metadata_sig]. If this condition is not satisfied, registration
-#' fails.
+#' [add_geometry_spec()] creates the specification. Geometric validation uses
+#' the same contract as [rcaiman::set_internal_geometry()], including radial
+#' normalization and monotonicity. It does not require the optical center or
+#' the normalization circle to fit inside the image.
 #'
 #' @section Retrieving:
-#' A `geometry_spec` may be retrieved using [get_geometry_spec()].
+#' Retrieve with [get_geometry_spec()] and pass the object directly to the
+#' core. Radial specifications can also describe destinations for
+#' [rcaiman::reproject_points()] and [rcaiman::reproject_image()].
 #'
-#' @note
-#' Can be used independently to supply arguments to \pkg{rcaiman} core
-#' functions. However, its domain of validity remains tied as declared in
-#' *Domain of application*.
-#'
-#' @seealso [calibrate_geometry()], [crosscalibrate_geometry()], [calc_diameter()]
-#'
+#' @seealso [add_geometry_spec()], [rcaiman::normalize_projection_coef()]
 #' @name geometry_spec
 #' @docType class
 NULL
@@ -213,24 +250,18 @@ NULL
 #' Radiometry specification
 #'
 #' @description
-#' Represent a radiometry specification defining the interpretative
-#' constraints and radiometric correction operators used by \pkg{rcaiman}
+#' Represent a radiometry specification defining flat-field correction
+#' operators used by \pkg{rcaiman}
 #' to obtain radiometrically consistent data from imaging systems.
 #'
 #' @section Definition:
 #' A `radiometry_spec` is a formal declaration of radiometric interpretation
 #' under a specific geometric interpretation of an imaging system.
 #'
-#' Radiometry specifications serve one of two purposes:
-#'
-#' * to define a quantitative flat-field correction model;
-#' * to declare interpretive constraints required to correctly understand
-#'   spectral meaning or operational conventions.
-#'
 #' @section Domain of application:
 #' A `radiometry_spec` acquires declared validity only when associated with a
 #' [geometry_spec] within a [hs_registry_entry]. Its structural
-#' position determines the geometric and metadata context under which the
+#' position determines the geometric, band, and metadata context under which the
 #' radiometric interpretation applies.
 #'
 #' @section Structure:
@@ -239,17 +270,10 @@ NULL
 #'
 #' \describe{
 #'   \item{id}{Identifier (snake_case).}
-#'   \item{type}{Either `"flat_field_correction"` or `"interpretive_constraint"`.}
-#'   \item{model}{Character vector identifying the flat-field model (applicable
-#'    when `type = "flat_field_correction"`).}
-#'   \item{parameters}{Named list of model parameters (applicable when
-#'    `type = "flat_field_correction"`).}
-#'   \item{data}{Named list of dense flat-field data (applicable when
-#'    `type = "flat_field_correction"`).}
-#'   \item{cfa_pattern}{Character matrix defining CFA structure (applicable
-#'    when `type = "interpretive_constraint"`).}
-#'   \item{spectral_mapping}{Named list of functions mapping sensor channels
-#'    to target bands (applicable when `type = "interpretive_constraint"`).}
+#'   \item{model}{Character vector identifying the flat-field model.}
+#'   \item{parameters}{Named list of fitted parameters by aperture and band, or `NULL`
+#'    for `lang2010`, whose coefficients are provided by the core.}
+#'   \item{rcaiman_version}{Version of the core recorded at declaration.}
 #'   \item{date}{Date of specification declaration.}
 #'   \item{notes}{Optional free-form documentation.}
 #'   \item{contact_information}{Optional contact information for traceability.}
@@ -260,11 +284,10 @@ NULL
 #' A `radiometry_spec` is created within a
 #' [hs_registry_entry] via [add_radiometry_spec()].
 #'
-#' Structural validation depends on `type`. For flat-field models,
-#' the declared function must satisfy a strict structural contract
-#' (see [add_radiometry_spec()] for details). For interpretive
-#' constraints, CFA structure and spectral mapping consistency
-#' are validated at registration time.
+#' The model identifier and its fitted parameters are validated at
+#' registration time (see [add_radiometry_spec()]). For the application of
+#' fitted spatial surfaces, see the "Radiometric preprocessing" section in
+#' [rcaiman::predict_trend_surface()].
 #'
 #' A radiometry specification is declarative. It does not apply
 #' corrections or enforce interpretation. Its role is to register

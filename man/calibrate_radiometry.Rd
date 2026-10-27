@@ -2,150 +2,90 @@
 % Please edit documentation in R/calibrate_radiometry.R
 \name{calibrate_radiometry}
 \alias{calibrate_radiometry}
-\title{Calibrate radiometry}
+\title{Calibrate radiometry from sampled measurements}
 \usage{
-calibrate_radiometry(
-  calibration_data,
-  is_horizon_circle_clipped,
-  snapped_zenith_coord,
-  horizon_radius,
-  projection_coef,
-  degree = 3,
-  band = "Blue",
-  search_radius = 2
-)
+calibrate_radiometry(measurements, degree = 3)
 }
 \arguments{
-\item{calibration_data}{named list of calibration cases. Each element
-represents one acquisition group and must contain \code{images}, \code{query_points},
-and \code{sampling_points}. (These inputs can be prepared conveniently with
-\href{https://github.com/GastonMauroDiaz/rcaiman-projects}{rcaiman-projects},
-but they are plain files consumed through rcaiman.)
-\describe{
-\item{\code{images}}{Path to a folder containing images readable by
-\code{\link[rcaiman:read_caim]{rcaiman::read_caim()}}, typically CFA-split
-images produced with \code{\link[rcaiman:split_cfa]{rcaiman::split_cfa()}} and interpreted with
-\code{\link[rcaiman:map_spectral_bands]{rcaiman::map_spectral_bands()}}.}
-\item{\code{query_points}}{Path to a point CSV readable by
-\code{\link[rcaiman:read_points]{rcaiman::read_points()}} with the position manually entered on the imaged
-central crosses (the cross drawn on the paper covering the eBook screen,
-see \emph{Guidance}) as depicted in \code{images}.}
-\item{\code{sampling_points}}{Path to a point CSV readable by
-\code{\link[rcaiman:read_points]{rcaiman::read_points()}} and used to estimate radiometry around each
-query point. The feature "Create grid..." of \emph{rcaiman-projects} is very
-convenient to obtain these points.}
-}
-The names of \code{calibration_data} are preserved in the returned dataset as a
-grouping variable, and are intended to identify the sampled direction, for
-example \code{"12"}, \code{"3"}, \code{"6"} and \code{"9"} (see \emph{Note}).}
+\item{measurements}{data frame, normally \code{sample_radiometry(...)$measurements},
+with finite numeric columns \code{off_axis} in radians (\verb{[0, pi]}) and \code{dn}.
+Optional \code{group} labels identify profiles normalized separately. Without
+that column, all rows belong to one group. Additional columns are retained
+in \code{ds}; \code{reference_dn} and \code{relative_response} must not already exist.
+Resolve or explicitly exclude missing measurements before fitting.}
 
-\item{is_horizon_circle_clipped}{logical vector of length one. Indicates
-whether the horizon circle (90 deg zenith angle), obtained via model
-extrapolation when necessary, is clipped by the image matrix. If
-\code{FALSE}, the geometry specification asserts that the complete horizon
-circle is fully
-included within the image extent.}
-
-\item{snapped_zenith_coord}{integer-like numeric vector of length two.
-Continuous image coordinates of the snapped optical center in the original
-image frame, in the order \code{c(x, y_down)}. The coordinates identify the
-center of the nearest 2 x 2 cell window.}
-
-\item{horizon_radius}{positive integer-like numeric vector of length one.
-Radius of the processing geometry in cell units. Twice this value is the
-diameter supplied to \code{\link[rcaiman:zenith_image]{rcaiman::zenith_image()}}.}
-
-\item{projection_coef}{numeric vector. Polynomial coefficients defining the
-radial projection model evaluated in radians.}
-
-\item{degree}{integer-like vector of length one. Polynomial model degree.}
-
-\item{band}{character vector of length one. Name of the band to sample from
-each image on argument \code{calibration_data}.}
-
-\item{search_radius}{numeric vector of length one. Search radius in radians
-used by \code{rcaiman::nn_spherical()} to associate sampling points with each
-query point.}
+\item{degree}{positive integer-like numeric vector of length one.
+Polynomial degree, from 1 to 6 as supported by
+\code{\link[rcaiman:calc_relative_response]{rcaiman::calc_relative_response()}}. The observations must support all
+coefficients.}
 }
 \value{
-List with named elements:
+list with the following components:
 \describe{
-\item{\code{ds}}{data frame used to fit the model, with \code{group}, \code{theta} in
-radians, and normalized \code{radiometry}.}
-\item{\code{model}}{\code{lm} object fitted to \code{1 - radiometry} as a polynomial
-function of \code{theta}, without an intercept.}
-\item{\code{vignetting_coef}}{numeric vector of polynomial coefficients derived
-from \code{model}, suitable for \code{model = "ff_simple_polynomial"} in
-\code{\link[=add_radiometry_spec]{add_radiometry_spec()}}.}
+\item{\code{ds}}{Measurement table in its original order, with \code{group},
+\code{reference_dn}, and \code{relative_response}. Original \code{dn} values and
+\code{off_axis} angles in radians are preserved.}
+\item{\code{model}}{Fitted \link[stats:lm]{stats::lm} object predicting
+\code{1 - relative_response} from \code{off_axis} in radians.}
+\item{\code{vignetting_coef}}{Numeric coefficients for
+\code{model = "simple_polynomial"} in \code{\link[=add_radiometry_spec]{add_radiometry_spec()}}, in
+increasing order of degree and without an intercept.}
 }
 }
 \description{
-Calibrate a fisheye lens to derive the mathematical relationship between
-zenith angle and inside-camera relative radiance when the photographed target
-is of constant radiance.
+Normalize radiometric measurements to the optical axis and fit a radial
+relative-response model.
 }
-\note{
-Point CSVs are persistent annotations in the original image frame. For a
-clipped horizon, images and points are transformed with
-\code{\link[rcaiman:expand_non_circular]{rcaiman::expand_non_circular()}} and
-\code{\link[rcaiman:expand_non_circular_points]{rcaiman::expand_non_circular_points()}}. Otherwise, both are cropped using
-\code{snapped_zenith_coord} and \code{horizon_radius}. Continuous coordinates are
-assigned to cells with \code{\link[rcaiman:y_down_from_y]{rcaiman::indices_from_coord()}} only after this common
-preprocessing, immediately before digital-number and direction extraction.
+\details{
+\code{\link[=sample_radiometry]{sample_radiometry()}} prepares the measurements and the pixels contributing
+to them. Review that sampling before calibration. Combine measurement
+tables with \code{rbind()} to fit several acquisition groups together; their
+\code{group} labels determine which measurements share a normalization reference.
 
-The function does not verify that coordinates, image dimensions, and the
-supplied geometry describe the same acquisition frame.
+For each group, the measured profile is mirrored about zero off-axis angle.
+The same absolute digital numbers are assigned to the positive and negative
+angles. A cubic spline (\code{method = "fmm"}) through that symmetric profile
+estimates the response at the optical axis. Repeated angles are averaged
+for the spline only. A profile containing only zero angles uses their mean.
+This preserves the normalization procedure of the simple method; \code{abs()}
+is applied during calibration, not during sampling.
 
-To calibrate different directions, think of the fisheye image as an analog
-clock. To calibrate 3 o'clock, attach the camera to the tripod in landscape
-mode while leaving the quarter-circle at the lens's right side. To calibrate
-9 o'clock, rotate the camera to put the quarter-circle at the lens's left
-side. To calibrate 12 and 6 o'clock, do the same but with the camera in
-portrait mode.
+Dividing the absolute measured digital numbers by that reference gives
+\code{relative_response}. The reference must be finite and positive. This is an
+optical-axis reference for vignetting, independent of the acquisition's
+orientation and of the zenith radiance used in CIE sky models.
+
+The normalized groups are pooled to fit \code{1 - relative_response} as a
+polynomial of off-axis angle without an intercept. Each measurement has
+equal weight, irrespective of its number of sampled pixels. The resulting
+response model equals one at zero angle, as in
+\code{\link[rcaiman:calc_relative_response]{rcaiman::calc_relative_response()}}. The returned \code{lm} uses \code{off_axis} in
+radians, matching \code{\link[rcaiman:add_directions]{rcaiman::add_directions()}}.
 }
-\section{Guidance}{
-
-Lenses have the inconvenient property of increasingly attenuating light along
-the direction orthogonal to the optical axis. This phenomenon is known as the
-vignetting effect and varies with lens model and aperture setting. The method
-outlined here, known as the simple method, is explained in detail in
-\insertCite{Diaz2024;textual}{rcaiman.registry}. The next explanation might
-serve mostly as a quick recap of it.
-
-The development of the simple method was done with a Kindle Paperwhite eBook
-reader of 6" with built-in light. However, an iPhone 6 Plus was also tested
-in the early stages of development and no substantial differences were
-observed. A metal bookend was used to fasten the eBook reader upright and a
-semi-transparent paper to favor a Lambertian light distribution. In addition,
-the latter was used to draw on, in order to guide pixel sampling. The bookend
-also facilitated the alignment of the screen with the dotted lines of the
-printed quarter-circle.
-\if{html}{\figure{lightSource.jpg}{options: style="display:block;margin:0 auto;max-width:50\%;"}}
-\if{latex}{\figure{lightSource.jpg}}
-As a general guideline, a wide variety of mobile devices could be used as
-light sources, but if scattered data points are obtained with it, then other
-light sources should be tested in order to double-check that the light
-quality is not the reason for points scattering.
-
-With the room only illuminated by the portable light source, nine photographs
-should be taken with the light source located in the equivalent to 0, 10, 20,
-30, 40, 50, 60, 70, and 80 degrees of zenith angle, respectively. Camera
-configuration should be in manual mode and set with the aperture (f/number)
-for which a vignetting function is required. The shutter speed should be
-regulated to obtain light-source pixels with middle grey values. The nine
-photographs should be taken \strong{without changing the camera configuration and
-the light conditions}.
-\if{html}{\figure{calibrationBoardVignetting.jpg}{options: style="display:block;margin:0 auto;max-width:50\%;"}}
-\if{latex}{\figure{calibrationBoardVignetting.jpg}}
-
-In the current recommended workflow,
-\href{https://github.com/GastonMauroDiaz/rcaiman-projects}{rcaiman-projects} can
-be used via the templates found in its menu \emph{Help>Examples}.
+\examples{
+\dontrun{
+measurements <- rbind(
+  samples_a$measurements,
+  samples_b$measurements,
+  samples_c$measurements,
+  samples_d$measurements
+)
+calibration <- calibrate_radiometry(measurements)
+plot(
+  relative_response ~ off_axis,
+  data = calibration$ds,
+  xlab = "Off-axis angle (rad)",
+  ylab = "Relative response"
+)
+angle <- seq(0, max(measurements$off_axis), length.out = 100)
+response <- calc_relative_response(angle,
+                                   "simple_polynomial",
+                                   calibration$vignetting_coef,
+                                   units = "radian")
+lines(angle, response)
 }
-
-\references{
-\insertAllCited{}
 }
 \seealso{
-\code{\link[=calibrate_geometry]{calibrate_geometry()}}, \code{\link[=add_radiometry_spec]{add_radiometry_spec()}}
+\code{\link[=sample_radiometry]{sample_radiometry()}} for acquisition guidance and a complete
+sampling example; \code{\link[rcaiman:calc_relative_response]{rcaiman::calc_relative_response()}}, \code{\link[=add_radiometry_spec]{add_radiometry_spec()}}
 }

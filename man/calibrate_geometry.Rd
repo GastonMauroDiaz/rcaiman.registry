@@ -2,49 +2,74 @@
 % Please edit documentation in R/calibrate_geometry.R
 \name{calibrate_geometry}
 \alias{calibrate_geometry}
-\title{Calibrate image geometry}
+\title{Calibrate a radial projection with the simple method}
 \usage{
-calibrate_geometry(calibration_points_coord, degree = 3)
+calibrate_geometry(
+  calibration_points_coord,
+  degree = 3,
+  normalization_angle = 90
+)
 }
 \arguments{
-\item{calibration_points_coord}{list of \code{data.frame} objects with numeric
-columns \code{"x"} and \code{"y_down"}. Each data frame contains points digitized in
-the original image frame. The first row identifies the zenith push pin.}
+\item{calibration_points_coord}{nonempty list of data frames with numeric
+columns \code{x} and \code{y_down}, in continuous image coordinates. Each frame
+contains 2 to 19 consecutive pin positions at 0, 5, ..., up to 90 deg.
+The first row identifies the pin on the optical axis. Every row is used
+in the fit.}
 
-\item{degree}{numeric vector of length one. Polynomial model degree.}
+\item{degree}{positive integer-like numeric vector of length one.
+Polynomial degree. The pooled observations must support estimation of
+all coefficients.}
+
+\item{normalization_angle}{positive numeric vector of length one, at most
+180. Off-axis angle in degrees defining the normalization reference.
+Defaults to 90. The fitted radius at this angle must be finite and positive.}
 }
 \value{
-List with named elements:
+list with the following components:
 \describe{
-\item{\code{ds}}{Data frame used to fit the model.}
-\item{\code{model}}{\code{lm} object fitted to pixel distance vs. zenith angle.}
-\item{\code{horizon_radius}}{Continuous estimate of radial distance in pixels at
-90 deg. Review and round this value before supplying it to
+\item{\code{ds}}{Data frame with \code{off_axis} in radians and \code{radius} in pixels,
+containing all pin observations used in the fit.}
+\item{\code{model}}{Fitted \link[stats:lm]{stats::lm} object predicting pixel radius from
+\code{off_axis} in radians.}
+\item{\code{normalization_radius}}{Continuous fitted radius in pixels at
+\code{normalization_angle}.}
+\item{\code{normalization_angle}}{Normalization reference in degrees.}
+\item{\code{projection_coef}}{Normalized polynomial coefficients, in
+increasing order of degree and evaluated in radians. Suitable for
+\code{parameters} in a radial \link{geometry_spec}.}
+\item{\code{center_of_vision}}{Continuous coordinates \code{c(x, y_down)}. Review
+and snap to integer coordinates before supplying the center to
 \code{\link[=add_geometry_spec]{add_geometry_spec()}}.}
-\item{\code{radial_projection_coef}}{Numeric vector of polynomial model coefficients
-for predicting relative radius. Suitable for \code{parameters} in
-\code{\link[=add_geometry_spec]{add_geometry_spec()}}  with \code{model = "radial_projection"}.}
-\item{\code{zenith_coord}}{Continuous image coordinates \code{c(x, y_down)} of the
-zenith push pin. Review and snap this estimate to the nearest integer
-coordinate before supplying it as \code{snapped_zenith_coord} to
-\code{\link[=add_geometry_spec]{add_geometry_spec()}}.}
-\item{\code{max_theta}}{Maximum zenith angle (deg).}
-\item{\code{max_theta_px}}{Distance in pixels between the zenith and the
-maximum zenith angle.}
 }
 }
 \description{
-Calibrate a fisheye lens to derive the mathematical relationship between
-image-space radial distances from the zenith and zenith angles in
-hemispherical space (assuming upward-looking hemispherical photography with
-the optical axis vertically aligned).
+Fit a radial projection from image coordinates of pins at known off-axis
+angles.
 }
 \details{
-Fisheye lenses have a wide field of view and radial symmetry with respect to
-distortion. This property allows precise fitting of a polynomial model to
-relate pixel distances to zenith angles. The method implemented here, known
-as the "simple method", is described in detail by
-\insertCite{Diaz2024;textual}{rcaiman.registry}.
+The simple method described by
+\insertCite{Diaz2024;textual}{rcaiman.registry} relates radial distance in
+pixels to off-axis angle. It assumes circular symmetry, as described for
+the radial model in \code{\link[rcaiman:set_internal_geometry]{rcaiman::set_internal_geometry()}}.
+
+Each image provides a continuous center-of-vision estimate from its first
+pin. Distances are measured relative to that image's center. The observations
+from all images are pooled to fit a polynomial without an intercept, using
+angles in radians. The returned center is the coordinate-wise median of
+the individual centers. All images must use the same image coordinate frame.
+
+The fitted radius at \code{normalization_angle} defines the scale. Dividing the
+polynomial coefficients by this radius gives \code{projection_coef}; changing
+the reference preserves the fitted projection in pixels. Normalization
+outside the range of the digitized pins involves extrapolation.
+
+The returned \link[stats:lm]{stats::lm} model predicts pixel radius from \code{off_axis} supplied
+in radians, as in \code{\link[=crosscalibrate_geometry]{crosscalibrate_geometry()}}. Inspect the fit before
+constructing a \link{geometry_spec}, where normalization and monotonicity over
+the chosen calculation interval are checked. A separately measured perimeter
+radius can be divided by \code{normalization_radius} and converted to an
+estimated off-axis angle with \code{\link[rcaiman:calc_relative_radius]{rcaiman::calc_off_axis_angle()}}.
 }
 \note{
 To calibrate different directions, think of the fisheye image as an analog
@@ -84,25 +109,109 @@ cardboard, foam, nails, etc.
 Place the camera on the tripod. Align its optical axis with the table while
 looking for getting an image showing the overlapping of the three pairs of
 push pins, as instructed in the print. In order to take care of the line of
-pins at 90º relative to the optical axis, it may be of help to use the naked
+pins at 90 deg relative to the optical axis, it may be of help to use the naked
 eye to align the entrance pupil of the lens with the pins. The alignment of
 the push pins only guarantees the position of the lens entrance pupil, the
-leveling should be cheeked with an instrument, and the alignment between the
-optical axis and the radius of the zenith push pin should be taken into
+leveling should be checked with an instrument, and the alignment between the
+optical axis and the radial line through the optical-axis push pin should be taken into
 account. In practice, the latter is achieved by aligning the camera body with
 the orthogonal frame made by the quarter circle.
 
 Take a photo and transfer it to the computer. Use
 \href{https://github.com/GastonMauroDiaz/rcaiman-projects}{rcaiman-projects} to
 create a point layer. This creates a csv that you can read with
-\code{\link[rcaiman:read_points]{rcaiman::read_points()}}. Use the edit tool to add points on the the
-photographed push pins, starting from the zenith push pin and not skipping
-any shown push pin. End with an additional point where the image meets the
-surrounding black (or the last pixel in case there is not blackness because
-it is not a circular hemispherical image. There is no need to follow the line
-formed by the push pins).
+\code{\link[rcaiman:read_points]{rcaiman::read_points()}}. Digitize the photographed push pins, starting
+from the one on the optical axis (0 deg), then proceeding at 5 deg intervals
+without skipping a pin. Stop at the last visible pin, up to 90 deg. Every
+point must identify a pin.
+
 \if{html}{\figure{pushpinsImageJ.jpg}{options: style="display:block;margin:0 auto;max-width:90\%;width:750px;"}}
 \if{latex}{\figure{pushpinsImageJ.jpg}}
+}
+}
+
+\section{Rescaling an existing radial calibration}{
+
+
+A previously calibrated radial projection can be reused by estimating its
+scale in the current image while keeping the shape of the projection curve.
+This can be useful, for example, when remounting a clip-on lens on a
+new smartphone. The calculation below uses \code{\link[rcaiman:calc_relative_radius]{rcaiman::calc_relative_radius()}}
+directly; it does not require fitting a new polynomial with
+\code{calibrate_geometry()}.
+\subsection{Measuring radius-angle pairs}{
+
+The required measurements can be obtained following the
+\href{https://www.schleppi.ch/patrick/hemisfer/help/en/lens.htm}{Hemisfer user manual}.
+A simpler arrangement uses a vertical wall and a level floor:
+\enumerate{
+\item Mark a 3-4-5 m right triangle on the floor, with the 4 m side along
+the wall. The 3 m side is perpendicular to the wall.
+\item Position the lens entrance pupil above the vertex 3 m from the wall,
+at a convenient height, such as 1.3 m.
+\item Mark the wall at that same height, directly opposite the entrance pupil.
+Add four marks at 1 m intervals along a horizontal line towards the other
+wall vertex.
+\item Point the optical axis horizontally and perpendicular to the wall, towards
+the first mark. In the image, this mark should coincide with the center
+of vision. This is a horizontal acquisition, irrespective of the
+orientation used later in the field.
+\item Measure the pixel radius from the center of vision to each of the other
+four marks. The 0 deg mark locates the center and is not used to estimate
+the scale.
+}
+
+The four off-axis angles are \code{atan((1:4) / 3) * 180 / pi}, approximately
+18.43, 33.69, 45, and 53.13 deg.
+
+\href{https://github.com/GastonMauroDiaz/rcaiman-projects}{rcaiman-projects}
+offers a measuring tool in View>Measure triangle. It can be used to measure
+radius. The center of vision can be obtained \code{\link[=calc_center_of_vision]{calc_center_of_vision()}}.
+}
+
+\subsection{Estimating the scale}{
+
+In this example, \code{geometry} is an existing radial \link{geometry_spec} or an
+equivalent list accepted by \code{\link[rcaiman:set_internal_geometry]{rcaiman::set_internal_geometry()}}. Its
+coefficients are normalized at \code{geometry$normalization_angle}. Replace
+the illustrative radii with your measurements, in the same order as \code{angle}.
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{angle <- atan((1:4) / 3) * 180 / pi
+radius <- c(205, 374, 500, 590)
+projection_coef <- geometry$parameters
+relative_radius <- rcaiman::calc_relative_radius(angle, projection_coef)
+estimated_radius <- radius / relative_radius
+data.frame(angle, radius, estimated_radius)
+normalization_radius <- median(estimated_radius)
+}\if{html}{\out{</div>}}
+
+Each measurement estimates the radius in pixels at the normalization angle.
+Inspect these estimates before summarizing them. A systematic change with
+angle suggests that a single scale does not explain the measurements.
+The median provides one estimate of the scale; it is not rounded to an
+integer and need not refer to 90 deg. The coefficients and their
+normalization angle remain unchanged.
+}
+
+\subsection{Checking an existing or rescaled calibration}{
+
+Compare the measured radii with predictions from the existing scale and
+from the newly estimated one:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{predicted_existing <- geometry$normalization_radius * relative_radius
+predicted_rescaled <- normalization_radius * relative_radius
+data.frame(angle, observed = radius,
+           predicted_existing, predicted_rescaled,
+           residual_existing = radius - predicted_existing,
+           residual_rescaled = radius - predicted_rescaled)
+}\if{html}{\out{</div>}}
+
+The first comparison checks the existing calibration against the new
+measurements. The second shows how well rescaling represents those same
+measurements. After reviewing the result, use the estimated
+\code{normalization_radius} when constructing the updated \link{geometry_spec}.
+The center of vision is a separate measurement and should also correspond
+to the current image.
 }
 }
 
@@ -111,29 +220,54 @@ path <- c(system.file("external/a_DSCN7172.csv", package = "rcaiman.registry"),
           system.file("external/b_DSCN7162.csv", package = "rcaiman.registry"))
 calibration_points_coord <- lapply(path, read_points)
 calibration <- calibrate_geometry(calibration_points_coord)
-coefficients(calibration$model)
-calibration$radial_projection_coef \%>\% signif(3)
-calibration$horizon_radius
-calibration$zenith_coord
+calibration$projection_coef
+calibration$normalization_radius
 
-# Constructing a geometry spec remains an explicit human decision.
-snapped_zenith_coord <- round(calibration$zenith_coord)
-horizon_radius <- round(calibration$horizon_radius)
 
-.fp <- function(theta, radial_projection_coef) {
-  x <- radial_projection_coef[1:5]
-  x[is.na(x)] <- 0
-  for (i in 1:5) assign(letters[i], x[i])
-  a * theta + b * theta^2 + c * theta^3 + d * theta^4 + e * theta^5
-}
+plot(c(0, pi/2), range(calibration$ds$radius), type = "n",
+     axes = FALSE,
+     xlab = "Off-axis angle",
+     ylab = "Fisheye image radius (pixel)"
+)
+box()
+axis(1, labels = c(0,expression(pi/8), expression(pi/4),
+                   expression(pi*3/8), expression(pi/2)),
+     at = c(0, pi/8, pi/4, pi*3/8, pi/2))
+axis(2)
 
-plot(calibration$ds)
-theta <- seq(0, pi/2, pi/180)
-lines(theta, .fp(theta, coefficients(calibration$model)))
+points(calibration$ds$off_axis,
+       calibration$ds$radius,
+       pch = 1,
+       col = 1)
+
+off_axis <- seq(0, pi/2, pi/180)
+lines(
+  off_axis,
+  calc_relative_radius(off_axis,
+                       calibration$projection_coef,
+                       units = "radian") * calibration$normalization_radius
+)
+
+# Prepare an internal geometry after reviewing the fit.
+geometry <- list(
+  model = "radial_projection",
+  parameters = calibration$projection_coef,
+  center_of_vision = round(calibration$center_of_vision),
+  normalization_radius = calibration$normalization_radius,
+  normalization_angle = calibration$normalization_angle,
+  max_off_axis_angle = 90
+)
+ig <- set_internal_geometry(c(1288, 962), geometry)
+
+# The same pixel projection with a different normalization reference.
+calibration_60 <- calibrate_geometry(calibration_points_coord,
+                                     normalization_angle = 60)
+calibration_60$normalization_radius
 }
 \references{
 \insertAllCited{}
 }
 \seealso{
-\code{\link[rcaiman:validate_projection_function]{rcaiman::validate_projection_function()}}, \code{\link[=crosscalibrate_geometry]{crosscalibrate_geometry()}}, \code{\link[=calibrate_radiometry]{calibrate_radiometry()}}
+\code{\link[rcaiman:normalize_projection_coef]{rcaiman::normalize_projection_coef()}},
+\code{\link[rcaiman:calc_relative_radius]{rcaiman::calc_relative_radius()}}, \code{\link[=crosscalibrate_geometry]{crosscalibrate_geometry()}}
 }

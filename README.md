@@ -3,10 +3,17 @@
 
 # rcaiman.registry
 
-    #> [1] "\\ifelse{html}{\\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\\strong{[Stable]}}"
+<!-- badges: start -->
+
+[![Lifecycle:
+experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+<!-- badges: end -->
 
 `rcaiman.registry` provides the infrastructure used by `rcaiman` to
 describe imaging systems used in canopy photography.
+
+Registry entries support hemispherical representation of observations,
+including acquisitions that cover only part of the hemisphere.
 
 The package implements a structured registry where instrument
 characteristics and interpretation rules are declared through
@@ -30,8 +37,8 @@ devtools::install_github("GastonMauroDiaz/rcaiman.registry")
 A registry entry represents a complete technical description of an
 imaging system. It typically combines:
 
-- an `embedded_metadata_sig` describing how metadata is detected in
-  files
+- a `signature` declaring the expected metadata values
+- a `band_spec` defining band interpretation
 - a `geometry_spec` defining the directional reference frame of the
   image
 - a `radiometry_spec` defining how pixel values should be interpreted
@@ -42,7 +49,7 @@ The package provides helper functions that allow you to build a valid
 registry entry step by step:
 
 ``` r
-foo <- new_registry_entry(
+my_entry <- new_registry_entry(
   "Nikon_Coolpix5700.FCE9.CIEFAP",
   body = "E5700",
   body_manufacturer = "NIKON CORP",
@@ -54,77 +61,78 @@ foo <- new_registry_entry(
   institution = "CIEFAP"
 )
 
-foo <- add_embedded_metadata_sig(
-  foo,
-  id = "exif_01",
+path <- system.file("external/nikon_coolpix5700_fce9_ciefap_snippet.R",
+                    package = "rcaiman.registry")
+source(path)
+head(metadata_rules, n = 2)
+#> $auto_focus
+#> $auto_focus$group
+#> [1] "Composite"
+#> 
+#> $auto_focus$tag
+#> [1] "AutoFocus"
+#> 
+#> $auto_focus$label
+#> [1] "AutoFocus"
+#> 
+#> $auto_focus$expected
+#> [1] "On"
+#> 
+#> 
+#> $cfapattern
+#> $cfapattern$group
+#> [1] "Composite"
+#> 
+#> $cfapattern$tag
+#> [1] "CFAPattern"
+#> 
+#> $cfapattern$label
+#> [1] "CFAPattern"
+#> 
+#> $cfapattern$expected
+#> [1] "[Yellow,Cyan][Green,Magenta]"
+
+my_entry <- add_signature(
+  my_entry,
+  id = "raw",
   dim = c(1288, 962),
   validated_with_libraw = "0.21.1",
   validated_with_exiftool = "13.59",
-  rules = list(
-    auto_focus = list(
-      group = "Composite",
-      tag = "AutoFocus",
-      label = "AutoFocus",
-      expected = "On"
-    ),
-    software = list(
-      group = "IFD0",
-      tag = "Software",
-      label = "Software",
-      expected = "E5700v1.1"
-    ),
-    digital_zoom = list(
-      group = "Nikon",
-      tag = "DigitalZoom",
-      label = "DigitalZoom",
-      expected = "1"
-    ),
-    quality = list(
-      group = "Nikon",
-      tag = "Quality",
-      label = "Quality",
-      expected = "RAW"
-    )
-  )
+  rules = metadata_rules
 )
 
-foo <- add_geometry_spec(
-  foo,
-  embedded_metadata_sig = "exif_01",
+my_entry <- add_band_spec(
+  my_entry,
+  signature = "raw",
+  id = "cygm",
+  cfa_pattern =  matrix(c("Green", "Yellow",
+                          "Magenta", "Cyan"), byrow = TRUE, ncol = 2),
+  spectral_mapping = list(Red = "Magenta", Green = "Green", Blue = "Cyan")
+)
+
+my_entry <- add_geometry_spec(
+  my_entry,
+  band_spec = "cygm",
+  signature = "raw",
   id = "simple_method",
   model = "radial_projection",
-  parameters = c(0.6380,  0.0307, -0.0200),
-  snapped_zenith_coord = c(645, 494),
-  horizon_radius = 378,
-  is_horizon_circle_clipped = FALSE,
-  max_zenith_angle = 94.8,
-  notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
+  parameters = c(0.63723886, 0.03455758, -0.02225094),
+  center_of_vision = c(639, 469),
+  normalization_radius = 377.6047,
+  normalization_angle = 90,
+  notes = "Documented in rcaiman.registry.data source code, folder data-raw",
   contact_information = "gastonmaurodiaz@gmail.com"
 )
 
-foo <- add_radiometry_spec(
-  foo,
-  embedded_metadata_sig = "exif_01",
-  geometry_spec = "simple_method",
-  id = "spectral_bands",
-  type = "interpretive_constraint",
-  cfa_pattern = matrix(c("Green", "Yellow",
-                         "Magenta", "Cyan"), byrow = TRUE, ncol = 2),
-  spectral_mapping = list(Red = "(Yellow + Magenta)/2",
-                          Green = "Green",
-                          Blue = "Cyan"),
-  contact_information = "gastonmaurodiaz@gmail.com"
-)
-
-foo <- add_radiometry_spec(
-  foo,
-  embedded_metadata_sig = "exif_01",
+my_entry <- add_radiometry_spec(
+  my_entry,
+  signature = "raw",
+  band_spec = "cygm",
   geometry_spec = "simple_method",
   id = "simple_method",
-  type = "flat_field_correction",
-  model = "ff_simple_polynomial",
-  parameters = list("5.0" = c(0.0638, -0.101)),
-  notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
+  model = "simple_polynomial",
+  parameters = list("0" = list("Cyan" = c(0.0638 - 0.101))),
+  notes = "Documented in 10.1016/j.agrformet.2024.110020" ,
   contact_information = "gastonmaurodiaz@gmail.com"
 )
 ```
@@ -133,7 +141,7 @@ A registry entry available in memory can be quickly inspected to
 understand which instrument it describes:
 
 ``` r
-foo
+my_entry
 #> <Registry entry>
 #> 
 #> Instrument system
@@ -154,45 +162,47 @@ foo
 #> 
 #> Registry contents
 #> -----------------
-#> Embedded metadata signatures: 1
+#> Signatures: 1
 #> 
-#> * exif_01
-#>     Geometry specifications: 1
-#>       - simple_method (radiometry: 2)
+#> * raw
+#>     Band specifications: 1
+#>       - cygm (geometry: 1)
+#>           - simple_method (radiometry: 1)
 #> 
+#> Total band specifications: 1
 #> Total geometry specifications: 1
-#> Total radiometry specifications: 2
+#> Total radiometry specifications: 1
 ```
 
 `summary()` can be used to list the specification identifiers.
 
 ``` r
-summary(foo)
+summary(my_entry)
 #> 
 #> Registry entry - Summary
 #> ========================
 #> 
-#> Embedded metadata signatures (1)
+#> Signatures (1)
 #> ---------------------------------
-#> * exif_01
+#> * raw
 #>     Dimensions:
 #>       - 1288 x 962
-#>     Geometry specifications (1):
-#>       - simple_method
-#>           Radiometry specifications (2):
-#>             * simple_method
-#>             * spectral_bands
+#>     Band specifications (1):
+#>       - cygm
+#>           Geometry specifications (1):
+#>             - simple_method
+#>                 Radiometry specifications (1):
+#>                   * simple_method
 ```
 
 The `get_*()` helpers allow specifications to be retrieved easily for
 use in scripts that interact with `rcaiman`.
 
 ``` r
-ems <- get_embedded_metadata_sig(foo, "exif_01")
-spec <- get_geometry_spec(foo, "exif_01", "simple_method")
-spec <- get_geometry_spec(ems, "simple_method")
-rspec <- get_radiometry_spec(spec, "spectral_bands")
-rspec <- get_radiometry_spec(foo, "exif_01", "simple_method", "spectral_bands")
+my_signature <- get_signature(my_entry, "raw")
+my_bands <- get_band_spec(my_signature, "cygm")
+my_geometry_spec <- get_geometry_spec(my_bands, "simple_method")
+my_radiometry_spec <- get_radiometry_spec(my_geometry_spec, "simple_method")
 ```
 
 A registry snapshot can be exported as a YAML file to be distributed as
@@ -200,19 +210,20 @@ metadata alongside preprocessed images.
 
 ``` r
 export_registry_snapshot(
-  registry_entry = foo,
-  embedded_metadata_sig = "exif_01",
+  registry_entry = my_entry,
+  signature = "raw",
+  band_spec = "cygm",
   geometry_spec = "simple_method",
-  interpretive_constraint = "spectral_bands",
-  flat_field_correction = simple_method,
-  file = "registry_snapshot.yaml"
+  radiometry_spec = "simple_method",
+  file = "my_snapshot.yaml"
 )
 ```
 
 ## On calibration
 
-The functions `calibrate_lens()` and `extract_radiometry()` provide
-support for implementing the simple calibration method described in:
+The functions `calibrate_geometry()`, `sample_radiometry()`, and
+`calibrate_radiometry()` provide support for implementing the simple
+calibration method described in:
 
 Díaz, G. M., Lang, M., & Kaha, M. (2024).  
 *Simple calibration of fisheye lenses for hemispherical photography of

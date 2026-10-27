@@ -1,7 +1,7 @@
 #' Construct a registry entry
 #'
 #' @description
-#' Construct a registry entry describing a imaging system and its
+#' Construct a registry entry describing an imaging system and its
 #' physical components (camera body, device, lens, and/or auxiliary lens).
 #'
 #' @details
@@ -12,12 +12,15 @@
 #' \itemize{
 #'   \item a reflex or mirrorless camera body with an interchangeable lens,
 #'   \item a compact camera (camera body with a fixed lens) with an auxiliary lens,
-#'   \item an image acquisition device with or without an auxiliary hemispherical lens.
+#'   \item an image acquisition device with or without an auxiliary lens.
 #' }
 #'
 #' For this reason, information related to camera bodies, devices, lenses, and
 #' auxiliary lenses is stored internally as separate components, each with its
 #' own identity (model, manufacturer, serial number).
+#'
+#' See [hs_registry_entry] for the meaning of hemispherical imaging system
+#' in this registry, including acquisitions with partial hemispherical coverage.
 #'
 #' @param id character vector of length one. Unique identifier of the camera
 #'   system within a project, institution, or personal workflow.
@@ -35,7 +38,7 @@
 #' @param lens_serial optional character vector of length one. Serial number as
 #'   physically printed on the lens.
 #' @param auxiliary_lens optional character vector of length one. Auxiliary
-#'   fisheye lens.
+#'   lens.
 #' @param auxiliary_lens_manufacturer optional character vector of length one.
 #' @param auxiliary_lens_serial optional character vector of length one.
 #' @param institution optional character vector of length one. Institution where
@@ -43,13 +46,13 @@
 #'
 #' @return An object of class [hs_registry_entry].
 #'
-#' @seealso [add_embedded_metadata_sig()], [add_geometry_spec()],
+#' @seealso [add_signature()], [add_geometry_spec()],
 #'   [add_radiometry_spec()]
 #'
 #' @export
 #'
 #' @examples
-#' foo <- new_registry_entry(
+#' my_entry <- new_registry_entry(
 #'   "Nikon_Coolpix5700.FCE9.CIEFAP",
 #'   body = "E5700",
 #'   body_manufacturer = "NIKON CORP",
@@ -61,8 +64,8 @@
 #'   institution = "CIEFAP"
 #' )
 #'
-#' foo
-#' summary(foo)
+#' my_entry
+#' summary(my_entry)
 new_registry_entry <- function(
     id,
     body = NULL,

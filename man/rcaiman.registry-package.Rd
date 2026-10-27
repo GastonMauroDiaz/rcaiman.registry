@@ -8,6 +8,12 @@
 \description{
 Provides a structured framework to define, store, and distribute imaging system specifications used by rcaiman for canopy image analysis.
 }
+\details{
+Registry entries support hemispherical representation of observations,
+including acquisitions that cover only part of the hemisphere. See
+\link{hs_registry_entry} for the definition of hemispherical imaging system
+used in this registry.
+}
 \seealso{
 Useful links:
 \itemize{
@@ -17,7 +23,7 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: GastC3n Mauro DC-az \email{gastonmaurodiaz@gmail.com} (\href{https://orcid.org/0000-0002-0362-8616}{ORCID})
+\strong{Maintainer}: Gastón Mauro Díaz \email{gastonmaurodiaz@gmail.com} (\href{https://orcid.org/0000-0002-0362-8616}{ORCID})
 
 }
 \keyword{internal}

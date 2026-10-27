@@ -48,7 +48,7 @@ physically printed on the device.}
 physically printed on the lens.}
 
 \item{auxiliary_lens}{optional character vector of length one. Auxiliary
-fisheye lens.}
+lens.}
 
 \item{auxiliary_lens_manufacturer}{optional character vector of length one.}
 
@@ -61,7 +61,7 @@ the instrument is usually stored.}
 An object of class \link{hs_registry_entry}.
 }
 \description{
-Construct a registry entry describing a imaging system and its
+Construct a registry entry describing an imaging system and its
 physical components (camera body, device, lens, and/or auxiliary lens).
 }
 \details{
@@ -72,15 +72,18 @@ correspond to typical acquisition setups such as:
 \itemize{
 \item a reflex or mirrorless camera body with an interchangeable lens,
 \item a compact camera (camera body with a fixed lens) with an auxiliary lens,
-\item an image acquisition device with or without an auxiliary hemispherical lens.
+\item an image acquisition device with or without an auxiliary lens.
 }
 
 For this reason, information related to camera bodies, devices, lenses, and
 auxiliary lenses is stored internally as separate components, each with its
 own identity (model, manufacturer, serial number).
+
+See \link{hs_registry_entry} for the meaning of hemispherical imaging system
+in this registry, including acquisitions with partial hemispherical coverage.
 }
 \examples{
-foo <- new_registry_entry(
+my_entry <- new_registry_entry(
   "Nikon_Coolpix5700.FCE9.CIEFAP",
   body = "E5700",
   body_manufacturer = "NIKON CORP",
@@ -92,10 +95,10 @@ foo <- new_registry_entry(
   institution = "CIEFAP"
 )
 
-foo
-summary(foo)
+my_entry
+summary(my_entry)
 }
 \seealso{
-\code{\link[=add_embedded_metadata_sig]{add_embedded_metadata_sig()}}, \code{\link[=add_geometry_spec]{add_geometry_spec()}},
+\code{\link[=add_signature]{add_signature()}}, \code{\link[=add_geometry_spec]{add_geometry_spec()}},
 \code{\link[=add_radiometry_spec]{add_radiometry_spec()}}
 }

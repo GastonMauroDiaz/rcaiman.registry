@@ -1,98 +1,21 @@
 .new_radiometry_spec <- function(
     id,
-    type,
     model = NULL,
     rcaiman_version = NULL,
     parameters = NULL,
-    data = NULL,
-    cfa_pattern = NULL,
-    spectral_mapping = NULL,
     date = NULL,
     notes = NULL,
     contact_information = NULL
 ) {
 
   .assert_id(id)
-  .check_vector(type, "character", 1)
-  .assert_choice(type, c("flat_field_correction", "interpretive_constraint"))
 
-  if (type == "flat_field_correction") {
-    .check_flat_field_model(model)
-    if (is.null(rcaiman_version)) {
-      rcaiman_version = as.character(utils::packageVersion("rcaiman"))
-    }
-    .check_vector(rcaiman_version, "character", 1)
-    if (!is.null(parameters)) {
-      if (!is.list(parameters)) {
-        stop("`parameters` must be a list.")
-      }
-      nms <- names(parameters)
-      if (is.null(nms) || any(nms == "")) {
-        stop("`parameters` must be a named list with names representing aperture values.")
-      }
-      aperture_num <- suppressWarnings(as.numeric(nms))
-      if (any(is.na(aperture_num))) {
-        stop("All `parameters` names must be coercible to numeric aperture values (f-numbers).")
-      }
-      if (any(!is.finite(aperture_num)) || any(aperture_num < 0)) {
-        stop("Aperture values in `parameters` must be positive and finite.")
-      }
-      if (any(duplicated(aperture_num))) {
-        stop("Duplicated aperture values detected in `parameters`.")
-      }
-      ok <- vapply(
-        parameters,
-        function(x) is.numeric(x) && length(x) >= 1,
-        logical(1)
-      )
-      if (!all(ok)) {
-        stop("Each element of `parameters` must be a numeric vector of length >= 1.")
-      }
-    }
-    # Cross-validation for flat-field specifications
-    if (type == "flat_field_correction") {
-
-      # --- validate model first ---
-      .check_flat_field_model(model)
-
-      # --- data-driven mode attempted ---
-      if (!is.null(data)) {
-
-        .validate_flat_field_data(data)
-
-        if (model != "ff_trend_surface")
-          stop(
-            "`data` requires `model = \"ff_trend_surface\"`.",
-            call. = FALSE
-          )
-
-        if (!is.null(parameters))
-          stop(
-            "`parameters` must be NULL when `data` is supplied.",
-            call. = FALSE
-          )
-
-      } else {
-
-        # --- parametric mode attempted ---
-        if (model == "flat_field_trend_surface")
-          stop(
-            "`flat_field_trend_surface` requires `data`.",
-            call. = FALSE
-          )
-
-        if (is.null(parameters))
-          stop(
-            "`parameters` must be supplied for parametric flat-field models.",
-            call. = FALSE
-          )
-      }
-    }
+  .check_flat_field_model(model)
+  if (is.null(rcaiman_version)) {
+    rcaiman_version <- as.character(utils::packageVersion("rcaiman"))
   }
-  if (type == "interpretive_constraint") {
-    .check_cfa_pattern(cfa_pattern)
-    .check_spectral_mapping(spectral_mapping, cfa_pattern)
-  }
+  .check_vector(rcaiman_version, "character", 1)
+  .check_radiometry_parameters(parameters, model)
 
   .check_vector(date, "date", 1)
   .check_vector(notes, "character", 1, allow_null = TRUE)
@@ -100,13 +23,9 @@
 
   x <- list(
     id = id,
-    type = type,
     model = model,
     rcaiman_version = rcaiman_version,
     parameters = parameters,
-    data = data,
-    cfa_pattern = cfa_pattern,
-    spectral_mapping = spectral_mapping,
     date = date,
     notes = notes,
     contact_information = contact_information
@@ -119,84 +38,54 @@
 #' Add a radiometry spec to an existing geometry spec
 #'
 #' @description
-#' Add a [radiometry_spec] to a [hs_registry_entry] object.
+#' Add a [radiometry_spec] declaring a flat-field correction model to a
+#' [hs_registry_entry] object.
 #'
 #' @details
-#' The behavior and required arguments depend on the value of `type`.
-#'
-#' When `type = "flat_field_correction"`, the specification must include a valid
-#' `model` identifier and associated `parameters` or flat-field `data`. The
-#' model is implemented in \pkg{rcaiman} as a function and can be resolved at
-#' runtime based on its name. Package version is stored for traceability and
+#' The specification must include a valid
+#' `model` identifier. Fitted models also require `parameters` organized by
+#' aperture and then band. Angular models are evaluated by [rcaiman::calc_relative_response()]
+#' and [rcaiman::flat_field_image()]. Package version is stored for traceability and
 #' reproducibility purposes.
 #'
-#' When `type = "interpretive_constraint"`, the specification declares
-#' constraints or conventions that affect how sensor data must be interpreted.
-#' At least one or these arguments must be provided: `cfa_pattern` and
-#' `spectral_mapping`. Modeling-related arguments are ignored.
+#' The empirical model `lang2010` contains its coefficients in
+#' the core implementation and describes the blue band reported in the publication.
+#' Register it with `parameters = NULL` and supply
+#' the acquisition aperture when evaluating it with the off-axis angles.
+#' Registering this model declares its applicability to the selected system;
+#' it does not represent a new fit to calibration observations.
 #'
 #' @param geometry_spec character vector of length one. Identifier of the geometry
 #'   specification to which the radiometry spec will be attached.
 #' @param id character vector of length one. Identifier of the radiometry spec.
 #'   Must use snake_case (lowercase letters, numbers, and underscores only)
-#' @param type character vector of length one. See *Details*.
-#' @param model character vector of length one. Identifier of a flat-field model
-#'   implemented in \pkg{rcaiman} package as a public function. Required when
-#'   `type = "flat_field_correction"`. The value should match the name of a
-#'   function. A flat-field model function that:
-#'   \itemize{
-#'     \item Has a first argument representing the primary input raster,
-#'       which must be a single-layer [terra::SpatRaster-class].
-#'     \item May declare an argument named `parameters` used to receive model
-#'       parameters.
-#'     \item Returns a single-layer [terra::SpatRaster-class].
-#'     \item Preserves raster geometry (extent, resolution, dimensions,
-#'       and CRS) with respect to the first raster argument.
-#'     \item Produces strictly positive or `NA` values and is therefore
-#'       interoperable with [rcaiman::apply_flat_field()].
-#'   }
+#' @param model character vector of length one. Angular model identifier for
+#'   [rcaiman::flat_field_image()]: `"simple_polynomial"`,
+#'   `"free_form_polynomial"`, or `"lang2010"`. Alternatively,
+#'   `"predict_trend_surface"` selects the general surface
+#'   evaluator [rcaiman::predict_trend_surface()] to model relative response.
+#'   See the "Radiometric preprocessing" section in
+#'   [rcaiman::predict_trend_surface()] for the calibration and application
+#'   workflow. Model selection does not guarantee positive predictions;
+#'   [rcaiman::apply_flat_field()] checks the evaluated correction.
 #' @param rcaiman_version character vector of length one. Version of the
 #'   \pkg{rcaiman} package used when the specification was created. If `NULL`,
 #'   the current installed version of \pkg{rcaiman} is recorded.
-#' @param parameters optional named list of model parameters. Parameters for
-#'   `model`. List names must be coercible to numeric values
-#'   representing f-numbers (provide `"0"` to indicates that is applicable to
-#'   any f-number). This argument is intended for use with
-#'   `type = "flat_field_correction"`.
-#' @param data optional named list. List names must be coercible to numeric
-#'   values representing f-numbers. Intended for use with `type =
-#'   "flat_field_correction"`. Each aperture must have dense flat-field data apt
-#'   to build a flat-field image.  The expected structure of each component is
-#'   another list with components:
-#'   \itemize{
-#'     \item `direction`: data frame with numeric columns `zen` and
-#'     `azi` (radian), describing the angular sampling positions.
-#'     \item `relative_radiance`: data frame with at least one numeric column
-#'     with the same number of rows as `direction`. Columns correspond to CFA
-#'     channels as it is conceptualized in [rcaiman::map_spectral_bands()]).
-#'   }
-#'   Angular values must be finite. Radiance values must be finite and
-#'   non-negative. This structure is intended for models that reconstruct the
-#'   flat-field surface from dense and well-distributed sampling points covering
-#'   the field of view. When `data` is supplied, `model` must be
-#'   `"ff_trend_surface"` and `parameters` must be `NULL`.
-#' @param cfa_pattern character matrix of two rows by two columns. Declares the
-#'   ordered set of color filter elements used by the sensor. This argument must
-#'   be provided when `type = "interpretive_constraint"`. Values should
-#'   correspond to semantic color labels (e.g. `"Red"`, `"Green"`, `"Blue"`,
-#'   `"Yellow"`, `"Cyan"`, `"Magenta"`), and reflect the CFA pattern as produced
-#'   by the sensor.
-#' @param spectral_mapping optional named list. Declares how target spectral
-#'   bands should be derived from sensor channels. This argument is intended for
-#'   use with `type = "interpretive_constraint"`. Each element of the list must
-#'   be named according to the target band (e.g. `"Red"`, `"Green"`, `"Blue"`).
-#'   The corresponding value must be a character scalar containing an algebraic
-#'   expression that defines how the target band is computed from the sensor
-#'   channels declared in `cfa_pattern`. Symbols used in the expression must
-#'   match channel labels in `cfa_pattern`. Only numeric constants and the
-#'   operators `+`, `-`, `*`, `/`, and parentheses are allowed.
-#'
-#' @inheritParams add_embedded_metadata_sig
+#' @param parameters `NULL` for the blue-band model `lang2010`; otherwise a
+#'   named list organized as aperture, then band, then fitted parameters.
+#'   Aperture names must be finite non-negative numeric values without numeric
+#'   duplicates; `"0"` declares applicability to any aperture. Each aperture
+#'   contains a non-empty list with unique nonempty band names, for example
+#'   `list("5.6" = list(Cyan = fitted_parameters))`. Use the band identifiers
+#'   of the data being corrected, whether source or spectrally mapped bands.
+#'   Only calibrated bands need to be listed; omission does not imply that
+#'   another band's calibration applies. Different apertures may list different
+#'   bands. For `predict_trend_surface`, each leaf is the plain list from
+#'   [rcaiman::fit_trend_surface()] (`np`, `beta`, `rx`, `ry`); for polynomial
+#'   models, each leaf is a non-empty numeric vector. Pass the selected leaf
+#'   unchanged to the core evaluator. Do not supply full fitted model objects
+#'   or calibration observations.
+#' @inheritParams add_signature
 #' @inheritParams add_geometry_spec
 #'
 #' @return
@@ -205,130 +94,105 @@
 #' @export
 #'
 #' @examples
-#' \dontrun{
-#' foo <- new_registry_entry(
-#'   "Nikon_Coolpix5700.FCE9.CIEFAP",
-#'   body = "E5700",
-#'   body_manufacturer = "NIKON CORP",
-#'   body_serial = "7053067",
-#'   lens = "Zoom Nikkor ED 8.9-71.2mm 1:2.8-4.2",
-#'   lens_manufacturer = "NIKON CORP",
-#'   auxiliary_lens = "Fisheye Converter FC-E9 0.2x",
-#'   auxiliary_lens_manufacturer = "NIKON CORP",
-#'   institution = "CIEFAP"
+#' entry <- new_registry_entry("example", device = "Example device")
+#' entry <- add_signature(
+#'   entry, "raw",
+#'   dim = c(20, 12),
+#'   validated_with_libraw = NA,
+#'   validated_with_exiftool = NA,
+#'   rules = list(model = list(
+#'     group = "IFD0",
+#'     tag = "Model",
+#'     label = "Model",
+#'     expected = "Example device"
+#'   ))
 #' )
-#'
-#' path <- system.file("external/nikon_coolpix5700_fce9_ciefap_snippet.R",
-#'                      package = "rcaiman.registry")
-#' source(path)
-#'
-#' foo <- add_embedded_metadata_sig(
-#'   foo,
-#'   id = "exif_raw",
-#'   dim = c(1288, 962),
-#'   validated_with_libraw = "0.21.1",
-#'   validated_with_exiftool = "13.59",
-#'   rules = metadata_rules
-#' )
-#'
-#' foo <- add_geometry_spec(
-#'   foo,
-#'   embedded_metadata_sig = "exif_raw",
-#'   id = "simple_method",
+#' entry <- add_band_spec(entry, "raw", "bands",
+#'                        cfa_pattern = matrix(letters[1:4], nrow = 2))
+#' entry <- add_geometry_spec(
+#'   entry,
+#'   "raw",
+#'   "bands",
+#'   "radial",
 #'   model = "radial_projection",
-#'   parameters = c(0.6380,  0.0307, -0.0200),
-#'   snapped_zenith_coord = c(645, 494),
-#'   horizon_radius = 378,
-#'   is_horizon_circle_clipped = FALSE,
-#'   max_zenith_angle = 94.8,
-#'   notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
-#'   contact_information = "gastonmaurodiaz@gmail.com"
+#'   parameters = equidistant_coef,
+#'   center_of_vision = c(10, 6),
+#'   normalization_radius = 10,
+#'   normalization_angle = 90
 #' )
 #'
-#' foo <- add_radiometry_spec(
-#'   foo,
-#'   embedded_metadata_sig = "exif_raw",
-#'   geometry_spec = "simple_method",
-#'   id = "spectral_bands",
-#'   type = "interpretive_constraint",
-#'   cfa_pattern = matrix(c("Green", "Yellow",
-#'                          "Magenta", "Cyan"), byrow = TRUE, ncol = 2),
-#'   spectral_mapping = list(Red = "(Yellow + Magenta)/2",
-#'                           Green = "Green",
-#'                           Blue = "Cyan"),
-#'   contact_information = "gastonmaurodiaz@gmail.com"
+#' # Synthetic normalized response for one band at aperture f/5.
+#' samples <- expand.grid(x = seq(0.5, 19.5, length.out = 8),
+#'                        y_down = seq(0.5, 11.5, length.out = 8))
+#' samples$relative_response <- 1 - 0.001 * (samples$x - 10)^2 -
+#'   0.002 * (samples$y_down - 6)^2
+#'
+#' fitted_parameters <- fit_trend_surface(
+#'   samples, col_id = "relative_response", np = 2
 #' )
 #'
-#' foo <- add_radiometry_spec(
-#'   foo,
-#'   embedded_metadata_sig = "exif_raw",
-#'   geometry_spec = "simple_method",
-#'   id = "simple_method",
-#'   type = "flat_field_correction",
-#'   model = "ff_simple_polynomial",
-#'   parameters = list("5.0" = c(0.0638, -0.101)),
-#'   notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
-#'   contact_information = "gastonmaurodiaz@gmail.com"
+#' entry <- add_radiometry_spec(
+#'   entry,
+#'   "raw",
+#'   "bands",
+#'   "radial",
+#'   "spatial_response",
+#'   model = "predict_trend_surface",
+#'   parameters = list("5" = list(Blue = fitted_parameters))
 #' )
 #'
+#' radiometry <- get_radiometry_spec(
+#'   entry, "raw", "bands", "radial", "spatial_response"
+#' )
 #'
-#' # Generate the data argument ----------------------------------------------
+#' r <- set_rcaiman_geometry(terra::rast(ncols = 20, nrows = 12))
+#' ff <- predict_trend_surface(r, radiometry$parameters[["5"]]$Blue)
+#' ff
+#' summary(entry)
 #'
-#' spec <- get_geometry_spec(foo,
-#'                           "exif_raw", "simple_method")
-#' z <- zenith_image(spec$horizon_radius*2, spec$parameters)
-#' a <- azimuth_image(z)
-#' files <- system.file("external/flat_field_image.tif", package = "rcaiman.registry")
-#' sampling_points <- fibonacci_points(z, a, 10)
+#' # An empirical model has no fitted parameters to register.
+#' entry <- add_radiometry_spec(
+#'   entry, "raw", "bands", "radial", "lang", model = "lang2010"
+#' )
+#' lang <- get_radiometry_spec(entry, "raw", "bands", "radial", "lang")
+#' geometry <- get_geometry_spec(entry, "raw", "bands", "radial")
+#' ig <- set_internal_geometry(entry$raw$dim, geometry)
+#' ff <- flat_field_image(ig$off_axis, lang$model, aperture = 5)
+#' ff
 #'
-#' fnumber <- c(5)
-#' radiance <- list()
-#' for (i in seq_along(files)) {
-#'   r <- read_caim(files[i])
-#'   sp <- lapply(1:4,
-#'                function(u) {
-#'                  sp <- extract_dn(r[[u]], sampling_points)
-#'                  relative_radiance(sp, col_id = 5)$sky_points
-#'                }
+#'
+#' \dontrun{
+#'   my_entry <- read_registry_snapshot(system.file(
+#'     "external/my_entry_v1.yaml", package = "rcaiman.registry"
+#'   ))
+#'
+#'   my_entry <- add_radiometry_spec(
+#'     my_entry,
+#'     signature = "raw",
+#'     band_spec = "cygm",
+#'     geometry_spec = "simple_method",
+#'     id = "simple_method",
+#'     model = "simple_polynomial",
+#'     parameters = list("0" = list("Cyan" = c(0.0638 - 0.101))),
+#'     notes = "Documented in 10.1016/j.agrformet.2024.110020" ,
+#'     contact_information = "gastonmaurodiaz@gmail.com"
 #'   )
-#'   df <- lapply(sp, function(x) x[,"rr"]) %>% data.frame()
-#'   names(df) <- names(r)
-#'   radiance[[i]] <- df
-#' }
-#' names(radiance) <- fnumber
-#' direction <- sp[[1]][, c("zen", "azi")]
-#' data <- list(direction, radiance)
-#' names(data) <- c("direction", "relative_radiance")
 #'
-#' # -------------------------------------------------------------------------
-#'
-#' foo <- add_radiometry_spec(
-#'   foo,
-#'   embedded_metadata_sig = "exif_raw",
-#'   geometry_spec = "simple_method",
-#'   id = "flat_field_generation",
-#'   type = "flat_field_correction",
-#'   model = "flat_field_trend_surface",
-#'   data = data,
-#'   notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
-#'   contact_information = "gastonmaurodiaz@gmail.com"
-#' )
-#'
-#' foo
-#' summary(foo)
+#'   summary(my_entry)
+#'   simple <- get_radiometry_spec(my_entry, "raw", "cygm", "simple_method", "simple_method")
+#'   ff <- flat_field_image(ig$off_axis, simple$model, parameters = simple$parameters$`0`$Cyan)
+#'   ff
+#'   plot(ff)
 #' }
 add_radiometry_spec <- function(
     registry_entry,
-    embedded_metadata_sig,
+    signature,
+    band_spec,
     geometry_spec,
     id,
-    type,
     model = NULL,
     rcaiman_version = NULL,
     parameters = NULL,
-    data = NULL,
-    cfa_pattern = NULL,
-    spectral_mapping = NULL,
     date = NULL,
     notes = NULL,
     contact_information = NULL
@@ -338,34 +202,16 @@ add_radiometry_spec <- function(
   if (is.null(date)) {
     date <- Sys.Date()
   }
-  .check_vector(embedded_metadata_sig, "character", 1)
-  if (is.null(registry_entry[[embedded_metadata_sig]])) {
-    stop(
-      sprintf("metadata signature with id '%s' does not exist in this registry entry.",
-              embedded_metadata_sig),
-      call. = FALSE
-    )
-  }
-  .embedded_metadata_sig <- registry_entry[[embedded_metadata_sig]]
-  .check_embedded_metadata_sig(.embedded_metadata_sig)
-  .check_vector(geometry_spec, "character", 1)
-  if (is.null(.embedded_metadata_sig$geometry[[geometry_spec]])) {
-    stop(
-      sprintf(
-        "Geometry spec with id '%s' does not exists for embedded metadata signature '%s'.",
-        geometry_spec, embedded_metadata_sig
-      ),
-      call. = FALSE
-    )
-  }
-  geometry <- .embedded_metadata_sig$geometry[[geometry_spec]]
+  geometry <- get_geometry_spec(
+    registry_entry, signature, band_spec, geometry_spec
+  )
   .check_geometry_spec(geometry)
   .check_vector(id, "character", 1)
   if (!is.null(geometry$radiometry[[id]])) {
     stop(
       sprintf(
-        "Radiometry spec with id '%s' already exists for geometry '%s'.",
-        id, geometry_spec
+        "Radiometry spec '%s' already exists under geometry '%s', band '%s', metadata '%s'.",
+        id, geometry_spec, band_spec, signature
       ),
       call. = FALSE
     )
@@ -373,18 +219,14 @@ add_radiometry_spec <- function(
 
   radiometry_spec <- .new_radiometry_spec(
     id = id,
-    type = type,
     model = model,
     rcaiman_version = rcaiman_version,
     parameters = parameters,
-    data = data,
-    cfa_pattern = cfa_pattern,
-    spectral_mapping = spectral_mapping,
     date = date,
     notes = notes,
     contact_information = contact_information
   )
 
-  registry_entry[[embedded_metadata_sig]]$geometry[[geometry_spec]]$radiometry[[id]] <- radiometry_spec
+  registry_entry[[signature]]$bands[[band_spec]]$geometry[[geometry_spec]]$radiometry[[id]] <- radiometry_spec
   registry_entry
 }

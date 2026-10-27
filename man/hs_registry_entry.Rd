@@ -5,26 +5,38 @@
 \alias{hs_registry_entry}
 \title{Registry entry for a hemispherical imaging system}
 \description{
-Objects of class \link{hs_registry_entry} describe an image systems and its
-specifications according with the requirements of \pkg{rcaiman} core
+Objects of class \link{hs_registry_entry} describe an imaging system and its
+specifications according to the requirements of \pkg{rcaiman} core
 functions. They store structured data organized into descriptive and
 specification domains.
 }
 \details{
+In this registry, "hemispherical imaging system" refers to an imaging system
+characterized so that its observations can be mapped onto a hemispherical
+representation. The term describes the intended domain of representation,
+not the angular coverage of an individual acquisition. An acquisition may
+cover only part of the hemisphere, and partial coverage does not require
+additional acquisitions to complete it.
+
+The geometric specification describes directions relative to the optical
+axis. The orientation of each acquisition places those directions in the
+surrounding hemisphere. Mapping observations to a hemispherical raster is
+a separate processing choice.
+
 This is an S3 class implemented as a named list. Its purpose is to make
 explicit, inspectable, and auditable the geometric and radiometric
 assumptions applied during canopy image preprocessing. This, in turn,
 requires the correct identification of the photographic system and its
-configuration state at the moment of acquisition. To that end, three distinct
+configuration state at the moment of acquisition. To that end, two distinct
 but related descriptive domains are represented in a registry entry:
 \itemize{
 \item instrument metadata, which describes the physical acquisition system
 as a real-world object, and
-\item embedded metadata signature (\link{embedded_metadata_sig}).
+\item signature (\link{signature}).
 }
 
 These domains are intentionally separated. A physical instrument exists
-independently of any particular file, and embedded
+independently of any particular file, while an embedded
 metadata act as a trace of a specific acquisition event.
 
 A registry entry must contain one instrument metadata entry, which defines the
@@ -54,8 +66,8 @@ identity conditions. Determining when it is scientifically justified to relax
 such conditions is outside the scope of the registry entry and remains a
 matter of expert judgment.
 
-Registry entries can be distributed through R packages. The
-\code{rcaiman.registry.data} package provides a curated set of official entries,
+Registry entries can be distributed through R packages.
+\pkg{rcaiman.registry.data} provides a curated set of official entries,
 while users and research groups can create their own packages following,
 preferably, the convention \verb{rcaiman.registry.<name>} to distribute custom
 registry entries.
@@ -68,14 +80,21 @@ declared identity and configuration state conditions.
 
 The object is a named list:
 
-\if{html}{\figure{hs_registry_entry.png}{options: style="display:block;margin:0 auto;max-width:100\%;width:750px;"}}
-\if{latex}{\figure{hs_registry_entry.png}}
+\preformatted{
+hs_registry_entry
++-- instrument_metadata (unique, mandatory element)
++-- signature (1...n, indexed by a user-defined ID)
+    +-- bands (named container): band_spec (1...n, indexed by a user-defined ID)
+        +-- geometry (named container): geometry_spec (1...n, indexed by a user-defined ID)
+            +-- radiometry (named container): radiometry_spec (1...n, indexed by a user-defined ID)
+}
 }
 
 \seealso{
 \itemize{
 \item \code{\link[=new_registry_entry]{new_registry_entry()}} to create a new \link{hs_registry_entry} object with the mandatory element \code{instrument_metadata}
-\item \code{\link[=add_embedded_metadata_sig]{add_embedded_metadata_sig()}} to add a \link{embedded_metadata_sig} to an existing registry entry
+\item \code{\link[=add_signature]{add_signature()}} to add a \link{signature} to an existing registry entry
+\item \code{\link[=add_band_spec]{add_band_spec()}} to add a \link{band_spec} under a metadata signature
 \item \code{\link[=add_geometry_spec]{add_geometry_spec()}} to add a \link{geometry_spec} to an existing registry entry
 \item \code{\link[=add_radiometry_spec]{add_radiometry_spec()}} to add a \link{radiometry_spec} to an existing registry entry
 }

@@ -5,8 +5,8 @@
 \alias{radiometry_spec}
 \title{Radiometry specification}
 \description{
-Represent a radiometry specification defining the interpretative
-constraints and radiometric correction operators used by \pkg{rcaiman}
+Represent a radiometry specification defining flat-field correction
+operators used by \pkg{rcaiman}
 to obtain radiometrically consistent data from imaging systems.
 }
 \note{
@@ -18,20 +18,13 @@ functions. However, its domain of validity remains tied as declared in
 
 A \code{radiometry_spec} is a formal declaration of radiometric interpretation
 under a specific geometric interpretation of an imaging system.
-
-Radiometry specifications serve one of two purposes:
-\itemize{
-\item to define a quantitative flat-field correction model;
-\item to declare interpretive constraints required to correctly understand
-spectral meaning or operational conventions.
-}
 }
 
 \section{Domain of application}{
 
 A \code{radiometry_spec} acquires declared validity only when associated with a
 \link{geometry_spec} within a \link{hs_registry_entry}. Its structural
-position determines the geometric and metadata context under which the
+position determines the geometric, band, and metadata context under which the
 radiometric interpretation applies.
 }
 
@@ -42,17 +35,10 @@ A \code{radiometry_spec} is an S3 object with the following fields:
 
 \describe{
 \item{id}{Identifier (snake_case).}
-\item{type}{Either \code{"flat_field_correction"} or \code{"interpretive_constraint"}.}
-\item{model}{Character vector identifying the flat-field model (applicable
-when \code{type = "flat_field_correction"}).}
-\item{parameters}{Named list of model parameters (applicable when
-\code{type = "flat_field_correction"}).}
-\item{data}{Named list of dense flat-field data (applicable when
-\code{type = "flat_field_correction"}).}
-\item{cfa_pattern}{Character matrix defining CFA structure (applicable
-when \code{type = "interpretive_constraint"}).}
-\item{spectral_mapping}{Named list of functions mapping sensor channels
-to target bands (applicable when \code{type = "interpretive_constraint"}).}
+\item{model}{Character vector identifying the flat-field model.}
+\item{parameters}{Named list of fitted parameters by aperture and band, or \code{NULL}
+for \code{lang2010}, whose coefficients are provided by the core.}
+\item{rcaiman_version}{Version of the core recorded at declaration.}
 \item{date}{Date of specification declaration.}
 \item{notes}{Optional free-form documentation.}
 \item{contact_information}{Optional contact information for traceability.}
@@ -65,11 +51,10 @@ to target bands (applicable when \code{type = "interpretive_constraint"}).}
 A \code{radiometry_spec} is created within a
 \link{hs_registry_entry} via \code{\link[=add_radiometry_spec]{add_radiometry_spec()}}.
 
-Structural validation depends on \code{type}. For flat-field models,
-the declared function must satisfy a strict structural contract
-(see \code{\link[=add_radiometry_spec]{add_radiometry_spec()}} for details). For interpretive
-constraints, CFA structure and spectral mapping consistency
-are validated at registration time.
+The model identifier and its fitted parameters are validated at
+registration time (see \code{\link[=add_radiometry_spec]{add_radiometry_spec()}}). For the application of
+fitted spatial surfaces, see the "Radiometric preprocessing" section in
+\code{\link[rcaiman:predict_trend_surface]{rcaiman::predict_trend_surface()}}.
 
 A radiometry specification is declarative. It does not apply
 corrections or enforce interpretation. Its role is to register

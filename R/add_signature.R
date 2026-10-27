@@ -63,7 +63,7 @@
   invisible(rules)
 }
 
-.new_embedded_metadata_sig <- function(
+.new_signature <- function(
     id,
     rules,
     dim,
@@ -89,35 +89,32 @@
     metadata_profile = metadata_profile,
     rules = rules,
     date = date,
-    geometry = list()
+    bands = list()
   )
-  class(x) <- "embedded_metadata_sig"
+  class(x) <- "signature"
   x
 }
 
-#' Add an embedded metadata signature to an existing registry
+#' Add a signature to an existing registry
 #'
 #' @description
-#' Add a [embedded_metadata_sig] to a [hs_registry_entry] object.
+#' Add a [signature] to a [hs_registry_entry] object.
 #'
 #' @param registry_entry [hs_registry_entry] object created with
 #'   [new_registry_entry()].
-#' @param id character vector of length one. Identifier of embedded metadata signature.
+#' @param id character vector of length one. Identifier of signature.
 #'   Must use snake_case (lowercase letters, numbers, and underscores only)
-#' @param namespace character vector of length one. Lowercase identifier of the
-#'   embedded metadata namespace (e.g. "exif", "xmp"). This value is descriptive
-#'   and does not trigger any validation against `rules` at registration time.
 #' @param dim integer-like numeric vector of length two. Width and height in
 #'   pixels of the raster that have been validated to be compatible with the
-#'   specifications associated with this `embedded_metadata_sig`.
+#'   specifications associated with this `signature`.
 #' @param validated_with_libraw character vector. Version(s) of the *LibRaw*
 #'   library that have been validated to be compatible with the
-#'   specifications associated with this `embedded_metadata_sig`. Multiple
+#'   specifications associated with this `signature`. Multiple
 #'   values allow recording additional verified versions without overwriting
 #'   previously validated ones. Use `NA` for the signature of JPEG files.
 #' @param validated_with_exiftool character vector. ExifTool version(s) that
 #'   have been validated to be compatible with the specifications associated
-#'   with this `embedded_metadata_sig`. Multiple values allow recording
+#'   with this `signature`. Multiple values allow recording
 #'   additional verified versions without overwriting previously validated ones.
 #'   `NA` is allowed.
 #' @param metadata_profile Character vector. Identify how image metadata
@@ -139,12 +136,12 @@
 #'   to the registry. If `NULL`, the current system date is used automatically.
 #'
 #' @return
-#' A [hs_registry_entry] object with the [embedded_metadata_sig] object appended.
+#' A [hs_registry_entry] object with the [signature] object appended.
 #'
 #' @export
 #'
 #' @examples
-#' foo <- new_registry_entry(
+#' my_entry <- new_registry_entry(
 #'   "Nikon_Coolpix5700.FCE9.CIEFAP",
 #'   body = "E5700",
 #'   body_manufacturer = "NIKON CORP",
@@ -157,8 +154,8 @@
 #' )
 #'
 #' #Rules written by hand.
-#' foo <- add_embedded_metadata_sig(
-#'   foo,
+#' my_entry <- add_signature(
+#'   my_entry,
 #'   id = "exif_raw",
 #'   dim = c(1288, 962),
 #'   validated_with_libraw = "0.21.1",
@@ -197,9 +194,9 @@
 #' source(path)
 #' metadata_rules
 #'
-#' foo
-#' summary(foo)
-add_embedded_metadata_sig <- function(
+#' my_entry
+#' summary(my_entry)
+add_signature <- function(
     registry_entry,
     id,
     rules,
@@ -216,14 +213,14 @@ add_embedded_metadata_sig <- function(
   if (!is.null(registry_entry[[id]])) {
     stop(
       sprintf(
-        "An embedded metadata signature with id '%s' already exists.",
+        "A signature with id '%s' already exists.",
         id
       ),
       call. = FALSE
     )
   }
 
-  registry_entry[[id]] <- .new_embedded_metadata_sig(
+  registry_entry[[id]] <- .new_signature(
     id = id,
     rules = rules,
     dim = dim,

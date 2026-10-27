@@ -2,54 +2,151 @@
 % Please edit documentation in R/crosscalibrate_radiometry.R
 \name{crosscalibrate_radiometry}
 \alias{crosscalibrate_radiometry}
-\title{Cross-calibrate radiometry}
+\title{Cross-calibrate radiometry from paired measurements}
 \usage{
-crosscalibrate_radiometry(r_uncal, r_cal, z, m, rings, degree = 5)
+crosscalibrate_radiometry(
+  measurements_uncal,
+  measurements_cal,
+  degree = 5,
+  k = 3
+)
 }
 \arguments{
-\item{z}{\link[terra:SpatRaster-class]{terra::SpatRaster} generated with \code{\link[rcaiman:zenith_image]{zenith_image()}}.}
+\item{measurements_uncal, measurements_cal}{data frames, normally the
+\code{measurements} components from \code{\link[=sample_radiometry]{sample_radiometry()}}. Required columns
+are finite numeric \code{off_axis} in radians (\verb{[0, pi]}) and strictly positive
+finite \code{dn}. Rows correspond by position and the tables must have equal
+lengths. Additional columns are retained in the returned profiles;
+\code{group}, when present, must identify a single acquisition in each table.
+\code{reference_dn}, \code{normalized_dn}, and \code{reference_weight} are reserved.}
 
-\item{m}{logical \link[terra:SpatRaster-class]{terra::SpatRaster} with one layer. A binary mask with
-\code{TRUE} for selected pixels.}
+\item{degree}{positive integer-like numeric vector of length one.
+Polynomial degree, from 1 to 6, default 5. The observations must support
+estimation of all coefficients.}
 
-\item{rings}{\link[terra:SpatRaster-class]{terra::SpatRaster} generated with \code{\link[rcaiman:ring_segmentation]{rcaiman::ring_segmentation()}}.}
-
-\item{degree}{integer-like vector of length one. Polynomial model degree.}
-
-\item{caim_uncal}{numeric \link[terra:SpatRaster-class]{terra::SpatRaster} of one layer.}
-
-\item{caim_cal}{numeric \link[terra:SpatRaster-class]{terra::SpatRaster} of one layer.}
+\item{k}{positive integer-like numeric vector of length one. Number of
+measurements used to estimate each optical-axis reference, default 3.
+Each table must contain at least \code{k} rows.}
 }
 \value{
-List with named elements:
+List containing:
 \describe{
-\item{\code{ds}}{data frame used to fit the model, with \code{theta} in radians and
-\code{radiometry} as the ratio between the normalized uncalibrated and
-calibrated ring profiles.}
-\item{\code{model}}{\code{lm} object fitted to \code{1 - radiometry} as a polynomial
-function of \code{theta}, without an intercept.}
-\item{\code{vignetting_coef}}{numeric vector of polynomial coefficients derived
-from \code{model}, suitable for \code{model = "ff_simple_polynomial"} in
-\code{\link[=add_radiometry_spec]{add_radiometry_spec()}}.}
-\item{\code{profile_uncal}}{data frame with the normalized zenith-ring profile
-extracted from the uncalibrated image.}
-\item{\code{profile_cal}}{data frame with the normalized zenith-ring profile
-extracted from the calibrated reference image.}
+\item{\code{ds}}{Paired data in input order, with \code{off_axis} for the uncalibrated
+system, \code{off_axis_cal}, \code{dn_uncal}, \code{dn_cal}, \code{normalized_dn_uncal},
+\code{normalized_dn_cal}, and \code{relative_response}. Angles are in radians.}
+\item{\code{model}}{Fitted \link[stats:lm]{stats::lm} predicting \code{1 - relative_response} from
+\code{off_axis} in radians. Residuals combine experimental and model errors.}
+\item{\code{vignetting_coef}}{Numeric coefficients without an intercept, in
+increasing order of degree, for \code{model = "simple_polynomial"} in
+\code{\link[=add_radiometry_spec]{add_radiometry_spec()}} or \code{\link[rcaiman:calc_relative_response]{rcaiman::flat_field_image()}}.}
+\item{\code{profile_uncal}, \code{profile_cal}}{Original tables, in corresponding
+row order, with \code{reference_dn}, \code{normalized_dn}, and \code{reference_weight}
+added.}
+\item{\code{reference_dn}}{Named numeric vector with the estimated optical-axis
+references, \code{uncal} and \code{cal}.}
 }
 }
 \description{
-Derive a radiometric calibration model for an uncalibrated image by
-referencing a radiometrically calibrated image taken under comparable
-conditions.
+Estimate a relative-response model by comparing measurements from an
+uncalibrated system with those from a radiometrically corrected reference
+image.
 }
-\note{
-The experimental setup assumes an open sky under stable illumination
-conditions. Overcast skies can be more variable than they appear, so
-clear-sky conditions may be preferable. Direct sunlight must not enter the
-lens. Argument \code{m} can be used to exclude abrupt radiance gradients or
-regions that should not contribute to the cross-calibration, such as the
-vicinity of the sun disk or areas of sky obstructed by canopy or buildings.
+\details{
+From the paired measurements prepared as described in \emph{Acquisition and
+sampling}, the function estimates an optical-axis reference for each system,
+normalizes the measurements, and fits a relative-response model.
+
+For each system, the function selects the \code{k} measurements nearest to the
+optical axis. Their angular distances are their own \code{off_axis} values.
+It estimates the digital number on the axis by inverse-square distance
+weighting:
+
+\deqn{\widehat{DN}_0 = \frac{\sum_i DN_i/d_i^2}{\sum_i 1/d_i^2}.}
+
+This is the estimator used for the zenith reference in
+\code{\link[rcaiman:calc_relative_radiance]{rcaiman::calc_relative_radiance()}}, applied here to the optical axis.
+No pixel has to coincide with the axis. \code{k} defaults to 3; distance ties
+are resolved in input order. If selected measurements have zero distance,
+only those contribute, with equal weights. \code{reference_weight} in each
+returned profile records the normalized weights; other rows have weight zero.
+
+The function normalizes each table by its own reference and divides the
+corresponding normalized measurements:
+
+\deqn{f_{v,i} =
+\frac{DN_{uncal,i}/\widehat{DN}_{uncal,0}}
+     {DN_{cal,i}/\widehat{DN}_{cal,0}}.}
+
+The result is \code{relative_response}. It is a ratio of normalized neighborhood
+means, not a mean of pixel-wise ratios. Multiplicative exposure differences
+cancel through the separate normalizations. The estimator is local: its
+accuracy depends on the measurements near the optical axis.
+
+It then fits \code{1 - relative_response} as a polynomial of the uncalibrated
+system's \code{off_axis} in radians, without an intercept. All measurements enter with
+equal weight. The resulting simple polynomial fixes the response at the
+axis to one. Models and their evaluation are described in
+\code{\link[rcaiman:calc_relative_response]{rcaiman::calc_relative_response()}}. The normalization is not repeated
+during fitting; \code{\link[=calibrate_radiometry]{calibrate_radiometry()}} uses its own normalization for the
+simple method and shares only the polynomial fitting operation.
+}
+\section{Acquisition and sampling}{
+
+
+The user is responsible for acquiring images whose corresponding internal
+directions represent the same external directions: align the optical axes
+and orient the tops of both sensors identically. Use stable illumination
+and linear digital numbers from the bands selected for comparison. The
+function assumes these conditions and does not detect, estimate, or
+compensate for orientation differences or experimental errors.
+
+The reference measurements must be free of radiometric bias.
+\code{\link[=sample_radiometry]{sample_radiometry()}} selects and returns pixels and their mean digital
+numbers independently for each image. Supply the same \code{query_directions}
+table to both calls and choose eligible pixels in each image. Shared queries
+fix the angular centers, while the contributing cells depend on each image's
+geometry and mask.
+
+Images grids and pixel indices may differ.
+Differences in geometric calibration errors between the two systems can
+cause them to sample different external directions. The resulting radiance
+differences propagate into the radiometric fit, particularly across steep
+
+Use masks to exclude abrupt radiance gradients. Direct sunlight must not
+enter the lens.
+
+Each call compares one pair of images. Supply their measurement tables in
+corresponding row order. Filtering or reordering must preserve the pairs.
+Rows are not joined by angle or identifier, and missing or nonpositive
+measurements are not removed automatically. If \code{group} is present, each
+table must contain exactly one nonmissing, nonempty group. Its name may
+differ between tables; it is not used to match rows. Additional columns
+are preserved in the returned profiles.
+}
+
+\examples{
+\dontrun{
+# Prepared images on their original grids; r_cal is radiometrically corrected.
+# query_directions contains off_axis and internal_azimuth in radians.
+# Use the same angular queries for both images.
+samples_uncal <- sample_radiometry(
+  r_uncal, ig_uncal, query_directions, candidates_uncal
+)
+samples_cal <- sample_radiometry(
+  r_cal, ig_cal, query_directions, candidates_cal
+)
+# Inspect samples_uncal$points and samples_cal$points before fitting.
+calibration <- crosscalibrate_radiometry(
+  samples_uncal$measurements, samples_cal$measurements, degree = 3
+)
+calibration$reference_dn
+calibration$profile_uncal
+
+ff_uncal <- flat_field_image(ig_uncal$off_axis, "simple_polynomial",
+                             calibration$vignetting_coef)
+corrected <- apply_flat_field(r_uncal, ff_uncal)
+}
 }
 \seealso{
-\code{\link[=calibrate_radiometry]{calibrate_radiometry()}}, \code{\link[=add_radiometry_spec]{add_radiometry_spec()}}
+\code{\link[=sample_radiometry]{sample_radiometry()}}, \code{\link[rcaiman:calc_relative_response]{rcaiman::calc_relative_response()}}
 }

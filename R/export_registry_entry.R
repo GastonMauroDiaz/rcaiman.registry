@@ -1,302 +1,202 @@
 #' Export and read registry snapshots
 #'
 #' @description
-#' Create and read portable snapshots of registry entries stored as YAML files.
+#' Write a selected registry branch to YAML and reconstruct it as a registry
+#' entry.
 #'
 #' @details
-#' A registry snapshot is a YAML representation of a specific subset of
-#' an [hs_registry_entry] object. It captures a single combination of
-#' [embedded_metadata_sig], [geometry_spec], and [radiometry_spec] with
-#' `type = "interpretive_constraint` and with `type = "flat_field_correction"`,
-#' together with intrument metadata and minimal metadata about the
-#' exporting environment.
+#' A snapshot contains instrument metadata, one [signature], one
+#' [band_spec], and optionally one [geometry_spec] and one flat-field
+#' [radiometry_spec]. A snapshot can end at the band specification, preserving
+#' its interpretation without selecting a geometry. Radiometry requires a
+#' selected geometry. Other branches are not exported.
 #'
-#' This mechanism provides a lightweight way to declare image geometric
-#' projection and radiometric correction without requiring the full registry
-#' infrastructure. In this way, the YAML file can act as the metadata of
-#' pre-processed images.
+#' The reader rebuilds the branch through the specification constructors,
+#' restoring dates, the CFA matrix, and model parameters. The resulting
+#' geometry can be passed directly to [rcaiman::set_internal_geometry()];
+#' radiometry parameters can be passed to their declared core evaluator.
 #'
-#' Moreover, [read_registry_snapshot()] reconstructs an [hs_registry_entry]
-#' object from a snapshot YAML file, making this format also useful to store and
-#' distribute single-branch registry estries.
+#' Snapshots use schema version 4. Earlier schemas are not supported. Numeric
+#' values are written with 17 significant digits. A CFA matrix is stored as
+#' column-major `values` and optional `dimnames`; its dimensions are always
+#' 2 x 2. Spectral expressions are stored as text and are not evaluated by
+#' the reader.
 #'
-#' @param file character vector of length one. Path to the YAML file used to
-#'   write or read the snapshot.
-#' @param interpretive_constraint optional character vector of length one.
-#'   Identifier of a [radiometry_spec] of type `interpretive_constraint`.
-#' @param flat_field_correction optional character vector of length one.
-#'   Identifier of a [radiometry_spec] of type `flat_field_correction`.
-#'
-#' @inheritParams get_embedded_metadata_sig
-#' @inheritParams get_geometry_spec
+#' @param file character vector of length one. Path to the YAML file.
+#' @param radiometry_spec optional character vector of length one.
+#'   Identifier of a [radiometry_spec] under the selected geometry. If `NULL`,
+#'   the snapshot contains no radiometry specification. Requires `geometry_spec`.
+#' @param registry_entry [hs_registry_entry] to export.
+#' @param signature character vector of length one. Identifier
+#'   of the selected metadata signature.
+#' @param band_spec character vector of length one. Identifier of the selected
+#'   band specification within that metadata signature.
+#' @param geometry_spec optional character vector of length one. Identifier of
+#'   the selected geometry within that band specification. If `NULL`, the
+#'   snapshot ends at the band specification.
 #'
 #' @return
+#' `export_registry_snapshot()` invisibly returns `file`.
 #'
-#' `export_registry_snapshot()` no return value. Called for side effects.
+#' `read_registry_snapshot()` returns an [hs_registry_entry] with the selected
+#' metadata signature and band, plus geometry and radiometry when selected.
 #'
-#' `read_registry_snapshot()` returns an object of class [`hs_registry_entry`].
-#'
-#' @seealso
-#' [`add_embedded_metadata_sig()`], [`add_geometry_spec()`],
-#' [`add_radiometry_spec()`]
-#'
+#' @seealso [add_band_spec()], [add_geometry_spec()], [add_radiometry_spec()]
 #' @rdname registry-snapshots
 #' @export
-#'
 #' @examples
-#'
-#' # Build the object to export ----------------------------------------------
-#'
-#' foo <- new_registry_entry(
-#'   "Nikon_Coolpix5700.FCE9.CIEFAP",
-#'   body = "E5700",
-#'   body_manufacturer = "NIKON CORP",
-#'   body_serial = "7053067",
-#'   lens = "Zoom Nikkor ED 8.9-71.2mm 1:2.8-4.2",
-#'   lens_manufacturer = "NIKON CORP",
-#'   auxiliary_lens = "Fisheye Converter FC-E9 0.2x",
-#'   auxiliary_lens_manufacturer = "NIKON CORP",
-#'   institution = "CIEFAP"
+#' entry <- read_registry_snapshot(system.file(
+#'   "external/my_entry_v2.yaml", package = "rcaiman.registry"
+#' ))
+#' summary(entry)
+#' file <- tempfile(fileext = ".yaml")
+#' export_registry_snapshot(
+#'   entry,
+#'   "raw",
+#'   "cygm",
+#'   "simple_method",
+#'   radiometry_spec = "simple_method",
+#'   file = file
 #' )
+#' restored <- read_registry_snapshot(file)
+#' summary(restored)
 #'
-#' path <- system.file("external/nikon_coolpix5700_fce9_ciefap_snippet.R",
-#'                      package = "rcaiman.registry")
-#' source(path)
-#'
-#' foo <- add_embedded_metadata_sig(
-#'   foo,
-#'   id = "exif_raw",
-#'   dim = c(1288, 962),
-#'   validated_with_libraw = "0.21.1",
-#'   validated_with_exiftool = "13.59",
-#'   rules = metadata_rules
-#' )
-#'
-#' foo <- add_geometry_spec(
-#'   foo,
-#'   embedded_metadata_sig = "exif_raw",
-#'   id = "simple_method",
-#'   model = "radial_projection",
-#'   parameters = c(0.6380,  0.0307, -0.0200),
-#'   snapped_zenith_coord = c(645, 494),
-#'   horizon_radius = 378,
-#'   is_horizon_circle_clipped = FALSE,
-#'   max_zenith_angle = 94.8,
-#'   notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
-#'   contact_information = "gastonmaurodiaz@gmail.com"
-#' )
-#'
-#' foo <- add_radiometry_spec(
-#'   foo,
-#'   embedded_metadata_sig = "exif_raw",
-#'   geometry_spec = "simple_method",
-#'   id = "spectral_bands",
-#'   type = "interpretive_constraint",
-#'   cfa_pattern = matrix(c("Green", "Yellow",
-#'                          "Magenta", "Cyan"), byrow = TRUE, ncol = 2),
-#'   spectral_mapping = list(Red = "(Yellow + Magenta)/2",
-#'                           Green = "Green",
-#'                           Blue = "Cyan"),
-#'   contact_information = "gastonmaurodiaz@gmail.com"
-#' )
-#'
-#' foo <- add_radiometry_spec(
-#'   foo,
-#'   embedded_metadata_sig = "exif_raw",
-#'   geometry_spec = "simple_method",
-#'   id = "simple_method",
-#'   type = "flat_field_correction",
-#'   model = "ff_simple_polynomial",
-#'   parameters = list("5.0" = c(0.0638, -0.101)),
-#'   notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
-#'   contact_information = "gastonmaurodiaz@gmail.com"
-#' )
-#'
-#' # Export the snapshot -----------------------------------------------------
-#'
-#' \dontrun{
-#' export_registry_snapshot(foo,
-#'                          "exif_raw",
-#'                          "simple_method",
-#'                          "spectral_bands",
-#'                          "simple_method",
-#'                          "inst/external/registry_snapshot.yaml")
-#' }
-#'
-#' # Read the snapshot -------------------------------------------------------
-#'
-#' read_registry_snapshot(system.file("external/registry_snapshot.yaml", package = "rcaiman.registry"))
-#'
+#' # Export band interpretation without geometry or radiometry.
+#' export_registry_snapshot(entry, "raw", "cygm", file = file)
+#' bands_only <- read_registry_snapshot(file)
+#' summary(bands_only)
+#' unlink(file)
 export_registry_snapshot <- function(
-    registry_entry,
-    embedded_metadata_sig,
-    geometry_spec,
-    interpretive_constraint = NULL,
-    flat_field_correction = NULL,
-    file
+    registry_entry, signature, band_spec, geometry_spec = NULL,
+    radiometry_spec = NULL, file
 ) {
-   .check_registry_entry(registry_entry)
-   .check_vector(embedded_metadata_sig, "character", 1)
-   .check_vector(geometry_spec, "character", 1)
-   .check_vector(interpretive_constraint, "character", 1, allow_null = TRUE)
-   .check_vector(flat_field_correction, "character", 1, allow_null = TRUE)
-   .check_vector(file, "character", 1)
+  .check_registry_entry(registry_entry)
+  .check_vector(geometry_spec, "character", 1, allow_null = TRUE)
+  .check_vector(radiometry_spec, "character", 1, allow_null = TRUE)
+  .check_vector(file, "character", 1)
+  if (is.null(geometry_spec) && !is.null(radiometry_spec)) {
+    stop("`radiometry_spec` requires `geometry_spec`.", call. = FALSE)
+  }
+  ems <- get_signature(registry_entry, signature)
+  band <- get_band_spec(ems, band_spec)
+  geometry <- if (!is.null(geometry_spec))
+    get_geometry_spec(band, geometry_spec) else NULL
+  radiometry <- if (!is.null(radiometry_spec))
+    get_radiometry_spec(geometry, radiometry_spec) else NULL
 
-
-  .sanitize_snapshot <- function(x) {
-
-    if (inherits(x, "Date")) {
-      return(as.character(x))
-    }
-
-    if (is.double(x) && all(is.na(x) | x == floor(x))) {
-      return(as.integer(x))
-    }
-
-    if (is.list(x)) {
-      return(lapply(x, .sanitize_snapshot))
-    }
-
+  ems$bands <- NULL
+  band$geometry <- NULL
+  if (!is.null(geometry)) geometry$radiometry <- NULL
+  if (!is.null(band$cfa_pattern)) {
+    band$cfa_pattern <- list(values = as.vector(band$cfa_pattern),
+                             dimnames = dimnames(band$cfa_pattern))
+  }
+  snapshot <- list(
+    schema_version = 4L,
+    created_with = list(package = "rcaiman.registry",
+                        version = as.character(utils::packageVersion("rcaiman.registry")),
+                        date = as.character(Sys.Date())),
+    configuration = list(signature = ems$id, band_spec = band$id,
+                          geometry_spec = geometry$id,
+                          radiometry_spec = radiometry_spec),
+    registry_entry = list(instrument_metadata = registry_entry$instrument_metadata,
+                          signature = ems, band_spec = band,
+                          geometry_spec = geometry,
+                          radiometry_spec = radiometry)
+  )
+  encode <- function(x) {
+    if (inherits(x, "Date")) return(as.character(x))
+    # YAML sequences discard names on atomic vectors; mappings retain them.
+    if (is.atomic(x) && !is.null(names(x))) x <- as.list(x)
+    if (is.list(x)) return(lapply(x, encode))
     x
   }
-  .check_registry_entry(registry_entry)
-
-  instrument_metadata <- registry_entry$instrument_metadata
-
-  ems <- get_embedded_metadata_sig(registry_entry, embedded_metadata_sig)
-  spec <- get_geometry_spec(ems, geometry_spec)
-  rspec_ic <- if (!is.null(interpretive_constraint))
-    get_radiometry_spec(spec, interpretive_constraint)
-  else
-    NULL
-  rspec_ffc <- if (!is.null(flat_field_correction))
-    get_radiometry_spec(spec, flat_field_correction)
-  else
-    NULL
-
-  ems$geometry <- NULL
-  spec$radiometry <- NULL
-
-  snapshot <- list(
-    schema_version = 1,
-    created_with = list(
-      package = "rcaiman.registry",
-      version = as.character(utils::packageVersion("rcaiman.registry")),
-      date = as.character(Sys.Date())
-    ),
-    configuration = list(
-      embedded_metadata_sig = ems$id,
-      geometry_spec = spec$id,
-      interpretive_constraint = if (!is.null(interpretive_constraint))
-        rspec_ic$id
-      else
-        NULL,
-      flat_field_correction = if (!is.null(flat_field_correction))
-        rspec_ffc$id
-      else
-        NULL
-    ),
-    registry_entry = list(
-        instrument_metadata = instrument_metadata,
-        embedded_metadata_sig = ems,
-        geometry_spec = spec,
-        interpretive_constraint = rspec_ic,
-        flat_field_correction = rspec_ffc
-      )
-  )
-
-  snapshot <- .sanitize_snapshot(snapshot)
-
-  yaml::write_yaml(snapshot, file, indent.mapping.sequence = TRUE)
-
+  yaml::write_yaml(encode(snapshot), file, indent.mapping.sequence = TRUE,
+                   precision = 17)
   invisible(file)
 }
-
 
 #' @rdname registry-snapshots
 #' @export
 read_registry_snapshot <- function(file) {
   .assert_file_exists(file)
-
-  snapshot <- yaml::read_yaml(file)
-
+  snapshot <- yaml::read_yaml(file, eval.expr = FALSE)
+  if (!is.list(snapshot) || length(snapshot$schema_version) != 1L ||
+      is.na(snapshot$schema_version) || snapshot$schema_version != 4) {
+    stop("Unsupported registry snapshot schema; expected version 4.", call. = FALSE)
+  }
   entry <- snapshot$registry_entry
+  required <- c("instrument_metadata", "signature", "band_spec",
+                "geometry_spec", "radiometry_spec")
+  if (!is.list(entry) || !all(required %in% names(entry))) {
+    stop("Incomplete registry snapshot branch.", call. = FALSE)
+  }
+  ems <- entry$signature
+  band <- entry$band_spec
+  geometry <- entry$geometry_spec
+  radiometry <- entry$radiometry_spec
+  if (is.null(geometry) && !is.null(radiometry)) {
+    stop("Snapshot radiometry requires a geometry specification.",
+         call. = FALSE)
+  }
+  ids <- list(signature = ems$id, band_spec = band$id,
+               geometry_spec = geometry$id, radiometry_spec = radiometry$id)
+  if (!is.list(snapshot$configuration) ||
+      !identical(snapshot$configuration[names(ids)], ids)) {
+    stop("Snapshot configuration does not match the selected branch.", call. = FALSE)
+  }
 
   im <- entry$instrument_metadata
-  ems <- entry$embedded_metadata_sig
-  spec <- entry$geometry_spec
-  rspec_ic <- entry$interpretive_constraint
-  rspec_ffc <- entry$flat_field_correction
-
-
-# Fix radiometry spec -----------------------------------------------------
-
-  .reconstruct_flat_field_data <- function(data) {
-
-    if (is.null(data))
-      return(NULL)
-
-    # --- direction ---
-    if (is.list(data$direction) && !is.data.frame(data$direction)) {
-      data$direction <- as.data.frame(data$direction, optional = TRUE)
+  args <- list(id = im$id, institution = im$institution)
+  for (part in c("body", "device", "lens", "auxiliary_lens")) {
+    if (!is.null(im[[part]])) {
+      args[[part]] <- im[[part]]$model
+      args[paste0(part, "_manufacturer")] <- list(im[[part]]$manufacturer)
+      args[paste0(part, "_serial")] <- list(im[[part]]$serial)
     }
+  }
+  result <- do.call(new_registry_entry, args)
+  ems$date <- as.Date(ems$date)
+  ems$dim <- unlist(ems$dim)
+  ems <- do.call(.new_signature, ems)
 
-    # --- radiance ---
-    rr <- data$relative_radiance
-
-    if (is.list(rr)) {
-      data$relative_radiance <- lapply(
-        rr,
-        function(x) {
-          if (is.list(x) && !is.data.frame(x)) {
-            as.data.frame(x, optional = TRUE)
-          } else {
-            x
-          }
-        }
-      )
+  band$date <- as.Date(band$date)
+  if (!is.null(band$cfa_pattern)) {
+    cfa <- band$cfa_pattern
+    if (length(cfa$values) != 4L) {
+      stop("Snapshot CFA pattern must contain four values.", call. = FALSE)
     }
-
-    data
+    band$cfa_pattern <- matrix(cfa$values, nrow = 2, dimnames = cfa$dimnames)
   }
-  if (!is.null(rspec_ffc$data)) {
-    rspec_ffc$data <- .reconstruct_flat_field_data(rspec_ffc$data)
-    .validate_flat_field_data(rspec_ffc$data)
-  }
+  band <- do.call(.new_band_spec, band)
 
-# -------------------------------------------------------------------------
-
-  class(spec) <- "geometry_spec"
-  class(ems) <- "embedded_metadata_sig"
-
-  if (!is.null(rspec_ic)) {
-    class(rspec_ic) <- "radiometry_spec"
-    #reconstruct matrix
-    rspec_ic$cfa_pattern <- matrix(rspec_ic$cfa_pattern, ncol = 2)
-    rspec_ic_id <- rspec_ic$id
+  if (!is.null(geometry)) {
+    geometry$date <- as.Date(geometry$date)
+    geometry$center_of_vision <- unlist(geometry$center_of_vision)
+    if (identical(geometry$model, "radial_projection")) {
+      geometry$parameters <- unlist(geometry$parameters)
+    } else if (identical(geometry$model, "anisotropic_projection")) {
+      geometry$parameters <- lapply(geometry$parameters, unlist)
+    }
+    geometry <- do.call(.new_geometry_spec, geometry)
   }
 
-  if (!is.null(rspec_ffc)) {
-    class(rspec_ffc) <- "radiometry_spec"
-    rspec_ffc_id <- rspec_ffc$id
+  if (!is.null(radiometry)) {
+    radiometry$date <- as.Date(radiometry$date)
+    if (!is.null(radiometry$parameters)) {
+      radiometry$parameters <- lapply(radiometry$parameters, function(bands) {
+        lapply(bands, function(p) {
+        if (identical(radiometry$model, "predict_trend_surface")) {
+          lapply(p, unlist)
+        } else unlist(p)
+        })
+      })
+    }
+    radiometry <- do.call(.new_radiometry_spec, radiometry)
+    geometry$radiometry[[radiometry$id]] <- radiometry
   }
-
-  ems_id <- ems$id
-  gspec_id <- spec$id
-
-  spec$radiometry <- list()
-  if (!is.null(rspec_ic)) spec$radiometry[[rspec_ic_id]] <- rspec_ic
-  if (!is.null(rspec_ffc)) spec$radiometry[[rspec_ffc_id]] <- rspec_ffc
-
-  ems$geometry <- list()
-  ems$geometry[[gspec_id]] <- spec
-
-  registry_entry <- list(
-    instrument_metadata = im
-  )
-  registry_entry[[ems_id]] <- ems
-
-  class(registry_entry) <- "hs_registry_entry"
-
-  registry_entry
+  if (!is.null(geometry)) band$geometry[[geometry$id]] <- geometry
+  ems$bands[[band$id]] <- band
+  result[[ems$id]] <- ems
+  result
 }

@@ -1,6 +1,6 @@
 Package: rcaiman.registry
 Title: Instrument Registry for CAnopy IMage ANalysis
-Version: 0.1.5.9000
+Version: 0.2.0.9000
 Authors@R: 
     person("Gastón Mauro", "Díaz", , "gastonmaurodiaz@gmail.com", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-0362-8616"))
@@ -12,11 +12,10 @@ URL: https://github.com/GastonMauroDiaz/rcaiman.registry
 BugReports: https://github.com/GastonMauroDiaz/rcaiman.registry/issues
 Depends: 
     R (>= 3.5),
-    rcaiman (>= 2.6)
+    rcaiman (>= 3.0.0.9000)
 Imports:
     graphics,
     magrittr,
-    geometry,
     Rdpack,
     stats,
     terra,

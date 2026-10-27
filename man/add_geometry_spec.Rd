@@ -6,14 +6,16 @@
 \usage{
 add_geometry_spec(
   registry_entry,
-  embedded_metadata_sig,
+  signature,
+  band_spec,
   id,
   model,
   parameters,
-  snapped_zenith_coord,
-  horizon_radius,
-  is_horizon_circle_clipped,
-  max_zenith_angle = NULL,
+  center_of_vision,
+  normalization_radius = NULL,
+  normalization_angle = NULL,
+  max_off_axis_angle = 90,
+  max_observed_off_axis_angle = NULL,
   date = NULL,
   notes = NULL,
   contact_information = NULL
@@ -23,8 +25,11 @@ add_geometry_spec(
 \item{registry_entry}{\link{hs_registry_entry} object created with
 \code{\link[=new_registry_entry]{new_registry_entry()}}.}
 
-\item{embedded_metadata_sig}{character vector of length one. Identifier of
-embedded metadata signature to which the geometry spec will be attached.}
+\item{signature}{character vector of length one. Identifier of
+signature containing the selected band specification.}
+
+\item{band_spec}{character vector of length one. Identifier of the band
+specification to which the geometry spec will be attached.}
 
 \item{id}{character vector of length one. Identifier of the geometry spec.
 Must use snake_case (lowercase letters, numbers, and underscores only)}
@@ -33,36 +38,37 @@ Must use snake_case (lowercase letters, numbers, and underscores only)}
 \pkg{rcaiman}. Either \code{"radial_projection"} or
 \code{"anisotropic_projection"}.}
 
-\item{parameters}{Model parameters. For \code{"radial_projection"}, a numeric
-vector of coefficients describing the relationship between image radius
-and zenith angle, validated with
-\code{\link[rcaiman:validate_projection_function]{rcaiman::validate_projection_function()}}. For
-\code{"anisotropic_projection"}, a named list following
-the parameter contract documented in
-\code{\link[rcaiman:add_directions_from_model]{rcaiman::add_directions_from_model()}}.}
+\item{parameters}{model parameters following
+\code{\link[rcaiman:set_internal_geometry]{rcaiman::set_internal_geometry()}}. For \code{"radial_projection"}, a numeric
+vector of polynomial coefficients predicting relative radius from
+off-axis angle in radians. For \code{"anisotropic_projection"}, a named list
+with \code{off_axis_coef}, \code{sin_internal_azimuth_coef},
+\code{cos_internal_azimuth_coef}, and \code{atan_scale}.}
 
-\item{snapped_zenith_coord}{integer-like numeric vector of length two.
-Continuous image coordinates of the snapped optical center in the original
-image frame, in the order \code{c(x, y_down)}. The coordinates identify the
-center of the nearest 2 x 2 cell window.}
+\item{center_of_vision}{integer-like numeric vector of length two.
+Snapped optical center in continuous image coordinates \code{c(x, y_down)},
+measured from the upper-left corner of the grid declared by the metadata
+signature. Integer coordinates lie on pixel boundaries. The center need
+not be inside the image.}
 
-\item{horizon_radius}{integer-like numeric vector of length one. Radius of the
-hemispherical image in pixel units, measured from the optical center
-(\code{snapped_zenith_coord}) to the image location corresponding to a zenith
-angle of 90 deg (i.e. the horizon). For \code{"radial_projection"}, it follows
-the conventions used in \pkg{rcaiman}; \code{2 * horizon_radius} is the diameter
-supplied to \code{\link[rcaiman:zenith_image]{rcaiman::zenith_image()}}.}
+\item{normalization_radius}{positive numeric vector of length one. Radius
+in pixels at \code{normalization_angle}. May be fractional. Required for the
+radial model; ignored by the anisotropic model.}
 
-\item{is_horizon_circle_clipped}{logical vector of length one. Indicates
-whether the horizon circle (90 deg zenith angle), obtained via model
-extrapolation when necesary, is clipped by the image matrix. If \code{FALSE},
-the geometry specification asserts that the complete horizon circle is
-fully included within the image extent, and this condition may be validated
-geometrically. If \code{TRUE}, horizon clipping is expected and no such
-validation is performed.}
+\item{normalization_angle}{positive numeric vector of length one, at most
+180. Off-axis angle in degrees where the radial polynomial equals one
+(tolerance 0.01). Required for the radial model; ignored by the anisotropic
+model. Declaring this value does not rescale coefficients; use
+\code{\link[rcaiman:normalize_projection_coef]{rcaiman::normalize_projection_coef()}} to change their reference.}
 
-\item{max_zenith_angle}{optional numeric vector of length one. Maximum zenith
-angle (deg) that the system is capable of observing.}
+\item{max_off_axis_angle}{positive numeric vector of length one, at most
+180. Angular calculation limit in degrees for the radial model. Defaults
+to 90; ignored by the anisotropic model.}
+
+\item{max_observed_off_axis_angle}{optional numeric vector of length one
+in \verb{[0, 180]}. Maximum off-axis angle, in degrees, represented by the
+observations used for geometric calibration. Independent of normalization
+and the calculation limit; it does not clip computed directions.}
 
 \item{date}{optional \code{\link{Date}} object. Date when the specification was added
 to the registry. If \code{NULL}, the current system date is used automatically.}
@@ -76,13 +82,23 @@ information for the specification maintainer or responsible person.}
 }
 \value{
 A \link{hs_registry_entry} object with the \link{geometry_spec} object
-appended the selected \link{embedded_metadata_sig}.
+appended to the selected \link{band_spec}.
 }
 \description{
 Add a \link{geometry_spec} to a \link{hs_registry_entry} object.
 }
+\details{
+The specification describes internal viewing directions. Orient an
+acquisition separately with \code{\link[rcaiman:direction_image]{rcaiman::direction_image()}}. Models and their
+equations are documented in \code{\link[rcaiman:set_internal_geometry]{rcaiman::set_internal_geometry()}}.
+
+Validation delegates to the core's internal geometry contract. The radial
+polynomial must satisfy its normalization and be strictly increasing over
+the calculation interval. The observed calibration maximum records experimental
+coverage.
+}
 \examples{
-foo <- new_registry_entry(
+my_entry <- new_registry_entry(
   "Nikon_Coolpix5700.FCE9.CIEFAP",
   body = "E5700",
   body_manufacturer = "NIKON CORP",
@@ -95,32 +111,46 @@ foo <- new_registry_entry(
 )
 
 path <- system.file("external/nikon_coolpix5700_fce9_ciefap_snippet.R",
-                     package = "rcaiman.registry")
+                    package = "rcaiman.registry")
 source(path)
+metadata_rules
 
-foo <- add_embedded_metadata_sig(
-  foo,
-  id = "exif_raw",
+my_entry <- add_signature(
+  my_entry,
+  id = "raw",
   dim = c(1288, 962),
   validated_with_libraw = "0.21.1",
   validated_with_exiftool = "13.59",
   rules = metadata_rules
 )
 
-foo <- add_geometry_spec(
-  foo,
-  embedded_metadata_sig = "exif_raw",
+my_entry <- add_band_spec(
+  my_entry,
+  signature = "raw",
+  id = "cygm",
+  cfa_pattern =  matrix(c("Green", "Yellow",
+                          "Magenta", "Cyan"), byrow = TRUE, ncol = 2),
+  spectral_mapping = list(Red = "Magenta", Green = "Green", Blue = "Cyan")
+)
+
+my_entry <- add_geometry_spec(
+  my_entry,
+  band_spec = "cygm",
+  signature = "raw",
   id = "simple_method",
   model = "radial_projection",
-  parameters = c(0.6380,  0.0307, -0.0200),
-  snapped_zenith_coord = c(645, 494),
-  horizon_radius = 378,
-  is_horizon_circle_clipped = FALSE,
-  max_zenith_angle = 94.8,
-  notes = "Calibration documented in doi:10.1016/j.agrformet.2024.110020",
+  parameters = c(0.63723886, 0.03455758, -0.02225094),
+  center_of_vision = c(639, 469),
+  normalization_radius = 377.6047,
+  normalization_angle = 90,
+  notes = "Documented in rcaiman.registry.data source code, folder data-raw",
   contact_information = "gastonmaurodiaz@gmail.com"
 )
 
-foo
-summary(foo)
+my_sig <- get_signature(my_entry, "raw")
+my_geometry_spec <- get_geometry_spec(my_sig, "cygm", "simple_method")
+\dontrun{
+ig <- set_internal_geometry(my_sig$dim, my_geometry_spec)
+plot(ig)
+}
 }

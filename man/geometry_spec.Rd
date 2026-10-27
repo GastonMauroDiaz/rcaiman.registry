@@ -5,85 +5,72 @@
 \alias{geometry_spec}
 \title{Geometry specification}
 \description{
-Represent a geometry specification defining the geometric reference frame
-used by \pkg{rcaiman} to interpret directional information from an image.
+Describe internal viewing directions under a declared band and metadata
+context.
 }
-\note{
-Can be used independently to supply arguments to \pkg{rcaiman} core
-functions. However, its domain of validity remains tied as declared in
-\emph{Domain of application}.
+\details{
+A \code{geometry_spec} is an S3 named list accepted directly as \code{geometry} by
+\code{\link[rcaiman:set_internal_geometry]{rcaiman::set_internal_geometry()}}. It describes off-axis angle and internal
+azimuth; acquisition orientation is supplied separately to
+\code{\link[rcaiman:direction_image]{rcaiman::direction_image()}}.
 }
-\section{Definition}{
+\section{Structure}{
 
-A \code{geometry_spec} is a formal declaration of the geometric transformation
-between image coordinates and spherical coordinates (zenith and azimuth)
-under a specific instrument configuration.
+\describe{
+\item{id}{Identifier unique within its \link{band_spec}.}
+\item{model}{Either \code{"radial_projection"} or \code{"anisotropic_projection"}.}
+\item{parameters}{Model coefficients following
+\code{\link[rcaiman:set_internal_geometry]{rcaiman::set_internal_geometry()}}.}
+\item{center_of_vision}{Snapped optical center in continuous image
+coordinates \code{c(x, y_down)}.}
+\item{normalization_radius}{Radius in pixels at the normalization angle.
+May be fractional. Required for the radial model.}
+\item{normalization_angle}{Off-axis angle in degrees where the radial
+polynomial equals one. Required for the radial model.}
+\item{max_off_axis_angle}{Radial calculation limit in degrees,
+defaulting to 90.}
+\item{max_observed_off_axis_angle}{Optional maximum off-axis angle in
+degrees represented by observations used for geometric calibration.}
+\item{date}{Date of specification declaration.}
+\item{notes}{Optional free-form documentation.}
+\item{contact_information}{Optional contact information.}
+\item{radiometry}{Named list of \link{radiometry_spec} objects.}
+}
+
+The anisotropic model ignores the normalization fields and calculation
+limit. Its parameter names are \code{off_axis_coef},
+\code{sin_internal_azimuth_coef}, \code{cos_internal_azimuth_coef}, and \code{atan_scale}.
+Both models and their equations are documented in
+\code{\link[rcaiman:set_internal_geometry]{rcaiman::set_internal_geometry()}}.
 }
 
 \section{Domain of application}{
 
-A \code{geometry_spec} acquires declared validity only when associated with an
-\link{embedded_metadata_sig} within a \link{hs_registry_entry}. Its
-position in that hierarchy determines the metadata context under which the
-geometric interpretation is applicable.
-}
+The specification belongs to a \link{band_spec} under an
+\link{signature}. Its coordinates refer to the image grid whose
+\code{dim} is declared in that metadata signature. For the anisotropic model,
+these dimensions also define the semidiagonal used by the model.
 
-\section{Structure}{
-
-
-A \code{geometry_spec} is an S3 object with the following fields:
-
-\describe{
-\item{id}{Identifier (snake_case).}
-\item{model}{Geometry model identifier: \code{"radial_projection"} or
-\code{"anisotropic_projection"}.}
-\item{parameters}{Numeric projection coefficient vector for
-\code{"radial_projection"}, or the named parameter list defined by
-\code{\link[rcaiman:add_directions_from_model]{rcaiman::add_directions_from_model()}} for
-\code{"anisotropic_projection"}.}
-\item{snapped_zenith_coord}{Integer-like numeric vector of length two.
-Continuous image coordinates \code{c(x, y_down)} of the snapped optical center
-in the original image frame.}
-\item{horizon_radius}{Positive integer-like numeric value specifying the
-radius corresponding to a 90 deg zenith angle.}
-\item{is_horizon_circle_clipped}{Logical value indicating whether the
-horizon circle is clipped by the original image frame.}
-\item{max_zenith_angle}{Optional numeric value specifying the maximum
-observable zenith angle (deg).}
-\item{date}{Date of specification declaration.}
-\item{notes}{Optional free-form documentation.}
-\item{contact_information}{Optional contact information for traceability.}
-\item{radiometry}{Named list of \link{radiometry_spec} objects.}
-}
-
-The radial projection model implemented in \pkg{rcaiman} is described in
-\code{\link[rcaiman:calc_relative_radius]{rcaiman::calc_relative_radius()}}. The anisotropic projection maps
-image-centered polar predictors to viewing directions as described in
-\code{\link[rcaiman:add_directions_from_model]{rcaiman::add_directions_from_model()}}.
+The maximum observed angle records experimental coverage. It is independent
+of the normalization reference and the calculation limit, and does not
+establish a model accuracy guarantee or a mask of measured pixels.
 }
 
 \section{Generation and validation}{
 
-
-A \code{geometry_spec} is created via \code{\link[=add_geometry_spec]{add_geometry_spec()}}.
-
-Structural constraints imposed by \pkg{rcaiman} are enforced at creation
-time. Radial parameters are evaluated with
-\code{\link[rcaiman:validate_projection_function]{rcaiman::validate_projection_function()}}; anisotropic parameters follow
-the contract documented in \code{\link[rcaiman:add_directions_from_model]{rcaiman::add_directions_from_model()}}.
-
-Additional contextual validation is performed when the specification is
-inserted into a registry. In particular, if \code{is_horizon_circle_clipped = FALSE}, the extrapolated horizon circle (90° zenith angle) must lie entirely
-within the image dimensions (\code{dim}) declared in the associated
-\link{embedded_metadata_sig}. If this condition is not satisfied, registration
-fails.
+\code{\link[=add_geometry_spec]{add_geometry_spec()}} creates the specification. Geometric validation uses
+the same contract as \code{\link[rcaiman:set_internal_geometry]{rcaiman::set_internal_geometry()}}, including radial
+normalization and monotonicity. It does not require the optical center or
+the normalization circle to fit inside the image.
 }
 
 \section{Retrieving}{
 
-A \code{geometry_spec} may be retrieved using \code{\link[=get_geometry_spec]{get_geometry_spec()}}.
+Retrieve with \code{\link[=get_geometry_spec]{get_geometry_spec()}} and pass the object directly to the
+core. Radial specifications can also describe destinations for
+\code{\link[rcaiman:reproject_points]{rcaiman::reproject_points()}} and \code{\link[rcaiman:reproject_image]{rcaiman::reproject_image()}}.
 }
 
 \seealso{
-\code{\link[=calibrate_geometry]{calibrate_geometry()}}, \code{\link[=crosscalibrate_geometry]{crosscalibrate_geometry()}}, \code{\link[=calc_diameter]{calc_diameter()}}
+\code{\link[=add_geometry_spec]{add_geometry_spec()}}, \code{\link[rcaiman:normalize_projection_coef]{rcaiman::normalize_projection_coef()}}
 }

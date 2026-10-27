@@ -16,26 +16,6 @@
   }
 }
 
-.check_geometry_model <- function(model, parameters) {
-  .assert_choice(
-    model,
-    c("radial_projection", "anisotropic_projection")
-  )
-
-  if (model == "radial_projection") {
-    .check_vector(parameters, "numeric")
-    # TODO (2026-09-04, bug)
-    # This validation is for USER INFORMATION ONLY via console. It is NOT
-    # meant to block the utilization of a registry_spec, but the messages do
-    # not show in console.
-    rcaiman::validate_projection_function(parameters)
-  } else {
-    .assert_anisotropic_projection_parameters(parameters)
-  }
-
-  invisible(TRUE)
-}
-
 .check_geometry_spec <- function(x) {
   if (!inherits(x, "geometry_spec")) {
     stop("The geometry specification must be an object of class 'geometry_spec'.",
@@ -45,7 +25,19 @@
     stop("Radiometry container missing in geometry '", x$id, "'")
   }
 
-  .check_geometry_model(x$model, x$parameters)
+  rcaiman::.check_internal_geometry(x)
+  .check_vector(x$id, "character", 1)
+  .assert_id(x$id)
+  .check_vector(x$date, "date", 1)
+  .check_vector(x$notes, "character", 1, allow_null = TRUE)
+  .check_vector(x$contact_information, "character", 1, allow_null = TRUE)
+  observed <- x$max_observed_off_axis_angle
+  .check_vector(observed, "numeric", 1, allow_null = TRUE,
+                name = "max_observed_off_axis_angle")
+  if (!is.null(observed) && (observed < 0 || observed > 180)) {
+    stop("`max_observed_off_axis_angle` must lie within [0, 180] degrees.",
+         call. = FALSE)
+  }
 
   invisible(TRUE)
 }
@@ -58,28 +50,52 @@
   .check_vector(y_down, "numeric")
 }
 
-.check_embedded_metadata_sig <- function(x) {
-  if (!inherits(x, "embedded_metadata_sig")) {
+.check_signature <- function(x) {
+  if (!inherits(x, "signature")) {
     stop(
-      "The embedded metadata signature must be an object of class 'embedded_metadata_sig'.",
+      "The signature must be an object of class 'signature'.",
       call. = FALSE
     )
   }
-  if (is.null(x$geometry) || !is.list(x$geometry)) {
+  if (is.null(x$bands) || !is.list(x$bands)) {
     stop(
-      "Geometry container missing in embedded metadata '",
+      "Band container missing in signature '",
       x$id,
       "'"
     )
   }
 }
 
+.check_band_spec <- function(x) {
+  if (!inherits(x, "band_spec")) {
+    stop("The band specification must be an object of class 'band_spec'.",
+         call. = FALSE)
+  }
+  .check_vector(x$id, "character", 1)
+  .assert_id(x$id)
+  .check_vector(x$date, "date", 1)
+  .check_vector(x$notes, "character", 1, allow_null = TRUE)
+  .check_vector(x$contact_information, "character", 1, allow_null = TRUE)
+  if (is.null(x$geometry) || !is.list(x$geometry)) {
+    stop("Geometry container missing in band specification '", x$id, "'.",
+         call. = FALSE)
+  }
+  if (!is.null(x$cfa_pattern)) .check_cfa_pattern(x$cfa_pattern)
+  if (!is.null(x$spectral_mapping)) {
+    if (is.null(x$cfa_pattern)) {
+      stop("`spectral_mapping` requires `cfa_pattern`.", call. = FALSE)
+    }
+    .check_spectral_mapping(x$spectral_mapping, x$cfa_pattern)
+  }
+  invisible(TRUE)
+}
+
 .check_flat_field_model <- function(model) {
   valid_flat_field_generators <- c(
-    "ff_free_form_polynomial",
-    "ff_lang2010",
-    "ff_simple_polynomial",
-    "ff_trend_surface"
+    "free_form_polynomial",
+    "lang2010",
+    "simple_polynomial",
+    "predict_trend_surface"
   )
 
   .check_vector(model, "character", 1)
@@ -90,9 +106,49 @@
          paste0(valid_flat_field_generators, collapse = ", "),
          call. = FALSE)
 
-  if (!exists(model, envir = asNamespace("rcaiman"), mode = "function"))
+  evaluator <- if (model == "predict_trend_surface") model else "calc_relative_response"
+  if (!exists(evaluator, envir = asNamespace("rcaiman"), mode = "function"))
     stop("`model` is not available in the installed rcaiman version.",
          call. = FALSE)
 
+  invisible(TRUE)
+}
+
+.check_radiometry_parameters <- function(parameters, model) {
+  if (model == "lang2010") {
+    if (!is.null(parameters)) {
+      stop("`parameters` must be NULL for lang2010; supply aperture when evaluating the model.",
+           call. = FALSE)
+    }
+    return(invisible(TRUE))
+  }
+  if (!is.list(parameters) || length(parameters) == 0) {
+    stop("`parameters` must be a non-empty named list by aperture.", call. = FALSE)
+  }
+  nms <- names(parameters)
+  if (is.null(nms) || anyNA(nms) || any(nms == "")) {
+    stop("`parameters` must have names representing aperture values.", call. = FALSE)
+  }
+  aperture <- suppressWarnings(as.numeric(nms))
+  if (any(!is.finite(aperture)) || any(aperture < 0)) {
+    stop("Aperture names must be finite, non-negative numeric values.", call. = FALSE)
+  }
+  if (anyDuplicated(aperture)) {
+    stop("Duplicated aperture values detected in `parameters`.", call. = FALSE)
+  }
+  for (bands in parameters) {
+    if (!is.list(bands) || !length(bands) || is.null(names(bands)) ||
+        anyNA(names(bands)) || any(!nzchar(trimws(names(bands)))) ||
+        anyDuplicated(names(bands))) {
+      stop("Each aperture must contain a non-empty list with unique band names.", call. = FALSE)
+    }
+    for (value in bands) {
+    if (model == "predict_trend_surface") {
+      rcaiman::.check_trend_surface_parameters(value)
+    } else {
+      rcaiman::calc_relative_response(numeric(), model, value)
+    }
+  }
+  }
   invisible(TRUE)
 }
