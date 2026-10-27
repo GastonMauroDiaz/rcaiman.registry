@@ -7,7 +7,7 @@ Authors@R:
 Description: Provides a structured framework to define, store, and
     distribute imaging system specifications used by rcaiman for canopy
     image analysis.
-License: MIT + file LICENSE
+License: GPL-3
 URL: https://github.com/GastonMauroDiaz/rcaiman.registry
 BugReports: https://github.com/GastonMauroDiaz/rcaiman.registry/issues
 Depends: 
