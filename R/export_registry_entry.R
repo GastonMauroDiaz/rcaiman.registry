@@ -186,7 +186,7 @@ read_registry_snapshot <- function(file) {
     if (!is.null(radiometry$parameters)) {
       radiometry$parameters <- lapply(radiometry$parameters, function(bands) {
         lapply(bands, function(p) {
-        if (identical(radiometry$model, "predict_trend_surface")) {
+        if (identical(radiometry$model, "trend_surface_image")) {
           lapply(p, unlist)
         } else unlist(p)
         })

@@ -287,7 +287,7 @@ NULL
 #' The model identifier and its fitted parameters are validated at
 #' registration time (see [add_radiometry_spec()]). For the application of
 #' fitted spatial surfaces, see the "Radiometric preprocessing" section in
-#' [rcaiman::predict_trend_surface()].
+#' [rcaiman::trend_surface_image()].
 #'
 #' A radiometry specification is declarative. It does not apply
 #' corrections or enforce interpretation. Its role is to register

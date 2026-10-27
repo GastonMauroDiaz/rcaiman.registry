@@ -54,7 +54,7 @@ A \code{radiometry_spec} is created within a
 The model identifier and its fitted parameters are validated at
 registration time (see \code{\link[=add_radiometry_spec]{add_radiometry_spec()}}). For the application of
 fitted spatial surfaces, see the "Radiometric preprocessing" section in
-\code{\link[rcaiman:predict_trend_surface]{rcaiman::predict_trend_surface()}}.
+\code{\link[rcaiman:trend_surface_image]{rcaiman::trend_surface_image()}}.
 
 A radiometry specification is declarative. It does not apply
 corrections or enforce interpretation. Its role is to register

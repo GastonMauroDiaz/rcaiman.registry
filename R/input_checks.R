@@ -95,7 +95,7 @@
     "free_form_polynomial",
     "lang2010",
     "simple_polynomial",
-    "predict_trend_surface"
+    "trend_surface_image"
   )
 
   .check_vector(model, "character", 1)
@@ -106,7 +106,7 @@
          paste0(valid_flat_field_generators, collapse = ", "),
          call. = FALSE)
 
-  evaluator <- if (model == "predict_trend_surface") model else "calc_relative_response"
+  evaluator <- if (model == "trend_surface_image") model else "calc_relative_response"
   if (!exists(evaluator, envir = asNamespace("rcaiman"), mode = "function"))
     stop("`model` is not available in the installed rcaiman version.",
          call. = FALSE)
@@ -143,7 +143,7 @@
       stop("Each aperture must contain a non-empty list with unique band names.", call. = FALSE)
     }
     for (value in bands) {
-    if (model == "predict_trend_surface") {
+    if (model == "trend_surface_image") {
       rcaiman::.check_trend_surface_parameters(value)
     } else {
       rcaiman::calc_relative_response(numeric(), model, value)

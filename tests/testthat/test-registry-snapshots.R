@@ -25,7 +25,7 @@ snapshot_entry <- function() {
   samples$relative_response <- 1 - .001 * (samples$x - 10)^2 -
     .002 * (samples$y_down - 6)^2
   p <- fit_trend_surface(samples, "relative_response", np = 2)
-  models <- list(surface = list(model = "predict_trend_surface",
+  models <- list(surface = list(model = "trend_surface_image",
                                 parameters = list("5.0" = list(Blue = p), "8" = list(Blue = p))),
                  simple = list(model = "simple_polynomial",
                                parameters = list("0" = list(Blue = c(a = .01, b = -.02)))),
@@ -89,8 +89,8 @@ test_that("all radiometry evaluators retain predictions through YAML", {
       evaluate <- function(spec) {
         if (spec$model == "lang2010")
           flat_field_image(ig$off_axis, spec$model, aperture = 5)
-        else if (spec$model == "predict_trend_surface")
-          predict_trend_surface(ig[[1]], spec$parameters[[1]]$Blue)
+        else if (spec$model == "trend_surface_image")
+          trend_surface_image(ig[[1]], spec$parameters[[1]]$Blue)
         else flat_field_image(ig$off_axis, spec$model, spec$parameters[[1]]$Blue)
       }
       expect_equal(values(evaluate(spec)), values(evaluate(before)), tolerance = 1e-12)

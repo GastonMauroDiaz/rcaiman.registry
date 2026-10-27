@@ -62,10 +62,10 @@
 #' @param model character vector of length one. Angular model identifier for
 #'   [rcaiman::flat_field_image()]: `"simple_polynomial"`,
 #'   `"free_form_polynomial"`, or `"lang2010"`. Alternatively,
-#'   `"predict_trend_surface"` selects the general surface
-#'   evaluator [rcaiman::predict_trend_surface()] to model relative response.
+#'   `"trend_surface_image"` selects the general surface
+#'   evaluator [rcaiman::trend_surface_image()] to model relative response.
 #'   See the "Radiometric preprocessing" section in
-#'   [rcaiman::predict_trend_surface()] for the calibration and application
+#'   [rcaiman::trend_surface_image()] for the calibration and application
 #'   workflow. Model selection does not guarantee positive predictions;
 #'   [rcaiman::apply_flat_field()] checks the evaluated correction.
 #' @param rcaiman_version character vector of length one. Version of the
@@ -80,7 +80,7 @@
 #'   of the data being corrected, whether source or spectrally mapped bands.
 #'   Only calibrated bands need to be listed; omission does not imply that
 #'   another band's calibration applies. Different apertures may list different
-#'   bands. For `predict_trend_surface`, each leaf is the plain list from
+#'   bands. For `trend_surface_image`, each leaf is the plain list from
 #'   [rcaiman::fit_trend_surface()] (`np`, `beta`, `rx`, `ry`); for polynomial
 #'   models, each leaf is a non-empty numeric vector. Pass the selected leaf
 #'   unchanged to the core evaluator. Do not supply full fitted model objects
@@ -137,7 +137,7 @@
 #'   "bands",
 #'   "radial",
 #'   "spatial_response",
-#'   model = "predict_trend_surface",
+#'   model = "trend_surface_image",
 #'   parameters = list("5" = list(Blue = fitted_parameters))
 #' )
 #'
@@ -146,7 +146,7 @@
 #' )
 #'
 #' r <- set_rcaiman_geometry(terra::rast(ncols = 20, nrows = 12))
-#' ff <- predict_trend_surface(r, radiometry$parameters[["5"]]$Blue)
+#' ff <- trend_surface_image(r, radiometry$parameters[["5"]]$Blue)
 #' ff
 #' summary(entry)
 #'

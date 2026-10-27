@@ -28,19 +28,19 @@ test_that("registry stores compact surfaces by aperture and core evaluates them"
   q <- p
   q$beta <- p$beta * 0.95
   entry <- add_radiometry_spec(entry, "raw", "bands", "radial", "surface",
-                               model = "predict_trend_surface",
+                               model = "trend_surface_image",
                                parameters = list("5" = list(Blue = p), "8" = list(Blue = q)))
   spec <- get_radiometry_spec(entry, "raw", "bands", "radial", "surface")
   expect_s3_class(spec, "radiometry_spec")
   expect_false("type" %in% names(spec))
-  expect_identical(spec$model, "predict_trend_surface")
+  expect_identical(spec$model, "trend_surface_image")
   expect_identical(spec$parameters, list("5" = list(Blue = p), "8" = list(Blue = q)))
   expect_false("data" %in% names(spec))
   expect_length(get_geometry_spec(original, "raw", "bands", "radial")$radiometry, 0)
   r <- set_rcaiman_geometry(terra::rast(nrows = 12, ncols = 20))
   evaluate <- getExportedValue("rcaiman", spec$model)
   ff <- evaluate(r, spec$parameters[["5"]]$Blue)
-  expect_equal(terra::values(ff), terra::values(predict_trend_surface(r, p)))
+  expect_equal(terra::values(ff), terra::values(trend_surface_image(r, p)))
   expect_equal(terra::values(evaluate(r, spec$parameters[["8"]]$Blue)),
                terra::values(ff * 0.95))
   expect_equal(terra::values(apply_flat_field(100 * ff, ff)),
@@ -51,7 +51,7 @@ test_that("registry stores compact surfaces by aperture and core evaluates them"
 
 test_that("surface validation uses the shared core contract", {
   p <- radiometry_surface_parameters()
-  make <- function(parameters, model = "predict_trend_surface") {
+  make <- function(parameters, model = "trend_surface_image") {
     .new_radiometry_spec("surface", model = model, parameters = parameters,
                          date = Sys.Date())
   }
@@ -70,7 +70,7 @@ test_that("surface validation uses the shared core contract", {
   expect_error(make(list("Inf" = p)), "finite")
   expect_error(make(list("-1" = list(Blue = p))), "non-negative")
   expect_error(make(list("5" = list(Blue = p)), "ff_trend_surface"), "supported")
-  expect_error(.new_radiometry_spec("surface", model = "predict_trend_surface",
+  expect_error(.new_radiometry_spec("surface", model = "trend_surface_image",
                                     data = list(), date = Sys.Date()), "unused argument")
   for (model in c("simple_polynomial", "free_form_polynomial")) {
     expect_identical(make(list("5" = list(Blue = c(1, .1))), model)$parameters,
@@ -102,7 +102,7 @@ test_that("apertures explicitly identify bands and snapshots preserve every leaf
   q <- p; q$beta <- q$beta * .9
   parameters <- list("5.6"=list(Blue=p,Cyan=q),"8"=list(Cyan=p))
   entry <- add_radiometry_spec(radiometry_surface_entry(),"raw","bands","radial",
-                              "multiband",model="predict_trend_surface",parameters=parameters)
+                              "multiband",model="trend_surface_image",parameters=parameters)
   for (extension in c("yaml","json")) {
     path <- tempfile(fileext=paste0(".",extension))
     export_registry_snapshot(entry,"raw","bands","radial","multiband",file=path)
